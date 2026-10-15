@@ -1,0 +1,17 @@
+CREATE TABLE usuario (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    cargo_id INTEGER NOT NULL,
+    nome VARCHAR(150) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    senha VARCHAR(255) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDENTE',
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_usuario_cargo
+        FOREIGN KEY (cargo_id)
+        REFERENCES cargo(id),
+
+    CONSTRAINT chk_usuario_status
+        CHECK (status IN ('ATIVO', 'PENDENTE', 'DESATIVADO'))
+);

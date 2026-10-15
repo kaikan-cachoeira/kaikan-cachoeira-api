@@ -1,0 +1,1 @@
+ALTER TABLE pagamento_caixa ADD CONSTRAINT fk_pagamento_caixa_fiado FOREIGN KEY (fiado_id) REFERENCES fiado(id);
