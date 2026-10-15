@@ -1,0 +1,13 @@
+CREATE TABLE token_senha (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    usuario_id INTEGER NOT NULL,
+    token CHAR(64) NOT NULL UNIQUE,
+    usado BOOLEAN NOT NULL DEFAULT FALSE,
+    expira_em TIMESTAMPTZ NOT NULL,
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_token_senha_usuario
+        FOREIGN KEY (usuario_id)
+        REFERENCES usuario(id)
+);
