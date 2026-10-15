@@ -36,7 +36,10 @@ CREATE TABLE produto_evento (
         CHECK (custo_total_ingredientes >= 0),
 
     CONSTRAINT chk_produto_evento_desconto
-        CHECK (desconto >= 0),
+        CHECK (desconto >= 0 AND desconto <= preco_venda),
+
+    CONSTRAINT chk_produto_evento_desconto_aplicado
+        CHECK ((desconto > 0) = (desconto_aplicado_em IS NOT NULL)),
 
     CONSTRAINT uq_produto_evento_nome
         UNIQUE (evento_id, nome),

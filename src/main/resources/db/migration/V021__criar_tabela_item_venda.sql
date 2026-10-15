@@ -20,5 +20,8 @@ CREATE TABLE item_venda (
         CHECK (quantidade > 0),
 
     CONSTRAINT uq_item_venda_produto
-        UNIQUE (venda_id, produto_evento_id)
+        UNIQUE (venda_id, produto_evento_id),
+
+    CONSTRAINT chk_item_venda_desconto_unitario
+        CHECK (desconto_unitario >= 0 AND desconto_unitario <= preco_unitario)
 );

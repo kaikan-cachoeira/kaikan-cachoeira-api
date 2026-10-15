@@ -6,7 +6,8 @@ CREATE TABLE movimentacao_estoque (
     doacao_id BIGINT,
     item_venda_id BIGINT,
     quantidade INTEGER NOT NULL,
-    custo_unitario DECIMAL(10, 2),
+    custo_unitario DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    custo_total DECIMAL(10, 2) NOT NULL DEFAULT 0,
     observacoes TEXT,
     criado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     atualizado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -35,7 +36,10 @@ CREATE TABLE movimentacao_estoque (
         CHECK (quantidade != 0),
 
     CONSTRAINT chk_mov_custo_unitario
-        CHECK (custo_unitario > 0),
+        CHECK (custo_unitario >= 0),
+
+    CONSTRAINT chk_mov_custo_total
+        CHECK (custo_total >= 0),
 
     CONSTRAINT chk_mov_origem_unica
         CHECK (doacao_id IS NULL OR item_venda_id IS NULL),

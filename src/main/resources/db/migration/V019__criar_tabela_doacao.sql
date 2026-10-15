@@ -37,17 +37,32 @@ CREATE TABLE doacao (
 
     CONSTRAINT chk_doacao_dinheiro CHECK (
         tipo != 'DINHEIRO' OR (
-            valor IS NOT NULL AND forma_pagamento IS NOT NULL
-            AND produto_id IS NULL AND nome IS NULL AND quantidade IS NULL)),
+            valor IS NOT NULL
+            AND forma_pagamento IS NOT NULL
+            AND produto_id IS NULL
+            AND nome IS NULL
+            AND quantidade IS NULL
+        )
+    ),
 
     CONSTRAINT chk_doacao_produto CHECK (
         tipo != 'PRODUTO' OR (
-            nome IS NOT NULL AND quantidade IS NOT NULL
-            AND produto_id IS NULL AND valor IS NULL AND forma_pagamento IS NULL)),
+            nome IS NOT NULL
+            AND quantidade IS NULL
+            AND produto_id IS NULL
+            AND valor IS NULL
+            AND forma_pagamento IS NULL
+        )
+    ),
 
     CONSTRAINT chk_doacao_reabastecimento CHECK (
         tipo != 'REABASTECIMENTO' OR (
-            produto_id IS NOT NULL AND quantidade IS NOT NULL
-            AND nome IS NULL AND valor IS NULL AND forma_pagamento IS NULL))
+            produto_id IS NOT NULL
+            AND quantidade IS NOT NULL
+            AND nome IS NOT NULL
+            AND valor IS NULL
+            AND forma_pagamento IS NULL
+        )
+    )
 
 );
