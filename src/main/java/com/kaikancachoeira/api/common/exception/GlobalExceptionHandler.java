@@ -5,6 +5,7 @@ import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.security.core.AuthenticationException;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -23,6 +25,8 @@ public class GlobalExceptionHandler {
     public static final String VALIDACAO = "VALIDACAO";
     public static final String REQUISICAO_INVALIDA = "REQUISICAO_INVALIDA";
     public static final String ERRO_INTERNO = "ERRO_INTERNO";
+    public static final String NAO_AUTENTICADO = "NAO_AUTENTICADO";
+    public static final String ACESSO_NEGADO = "ACESSO_NEGADO";
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErroResponse> handleApiException(ApiException ex) {
@@ -83,6 +87,18 @@ public class GlobalExceptionHandler {
         return resposta(HttpStatus.BAD_REQUEST, REQUISICAO_INVALIDA,
                 "Parâmetro obrigatório ausente",
                 List.of(new CampoErro(ex.getParameterName(), "Parâmetro obrigatório")));
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErroResponse> handleAutenticacao(AuthenticationException ex) {
+        return resposta(HttpStatus.UNAUTHORIZED, NAO_AUTENTICADO,
+                "Autenticação necessária", List.of());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErroResponse> handleAcessoNegado(AccessDeniedException ex) {
+        return resposta(HttpStatus.FORBIDDEN, ACESSO_NEGADO,
+                "Você não tem permissão para realizar esta operação.", List.of());
     }
 
     @ExceptionHandler(Exception.class)
