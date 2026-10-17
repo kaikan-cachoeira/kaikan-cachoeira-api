@@ -24,7 +24,7 @@ public class TokenOpacoService {
         return HexFormat.of().formatHex(bytes);
     }
 
-    public String calcularHash(String token) {
+    public String gerarHash(String token) {
         Objects.requireNonNull(token, "O token não pode ser nulo");
 
         try {
