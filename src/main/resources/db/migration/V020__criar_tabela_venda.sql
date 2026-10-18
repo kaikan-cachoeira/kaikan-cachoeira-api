@@ -12,7 +12,7 @@ CREATE TABLE venda (
         REFERENCES evento(id),
 
     CONSTRAINT chk_venda_desconto
-        CHECK (desconto >= 0),
+        CHECK (desconto >= 0 AND desconto <= preco_total),
 
     CONSTRAINT chk_venda_preco_total
         CHECK (preco_total >= 0)
