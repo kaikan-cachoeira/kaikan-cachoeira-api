@@ -1,7 +1,11 @@
-package com.kaikancachoeira.api.auth;
+package com.kaikancachoeira.api.auth.entity;
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,34 +16,25 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.Instant;
 
 @Entity
-@Table(name = "usuario")
+@Table(name = "permissao")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Usuario {
+public class Permissao {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column
-    @NotBlank
-    @Size(min = 5)
     private String nome;
 
-    @Column(unique = true)
-    @Email
-    private String email;
-
-    @Column
-    @NotBlank
-    private String senha;
-
     @CreationTimestamp
+    @Column(name = "criado_em", updatable = false)
     private Instant criadoEm;
 
     @UpdateTimestamp
+    @Column(name = "atualizado_em")
     private Instant atualizadoEm;
-
 }

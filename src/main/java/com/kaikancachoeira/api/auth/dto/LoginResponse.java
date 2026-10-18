@@ -1,5 +1,17 @@
 package com.kaikancachoeira.api.auth.dto;
 
-public record LoginResponse(Long id, String email) {
+import java.util.List;
 
+public record LoginResponse(
+        String accessToken,
+        String refreshToken,
+        UsuarioResponse usuario
+) {
+
+    public record UsuarioResponse(
+            String nome,
+            String cargo,
+            List<String> permissoes
+    ) {
+    }
 }
