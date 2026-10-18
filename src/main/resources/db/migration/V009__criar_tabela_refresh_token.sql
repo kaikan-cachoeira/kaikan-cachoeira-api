@@ -1,0 +1,13 @@
+CREATE TABLE refresh_token (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    usuario_id INTEGER NOT NULL,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    revogado BOOLEAN NOT NULL DEFAULT FALSE,
+    expira_em TIMESTAMPTZ NOT NULL,
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_refresh_token_usuario
+        FOREIGN KEY (usuario_id)
+        REFERENCES usuario(id)
+);
