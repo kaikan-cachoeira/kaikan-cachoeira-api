@@ -25,16 +25,20 @@ public class Permissao {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
-    @Column
+    @Column(nullable = false, unique = true, length = 100)
     private String nome;
 
+    @Column(length = 255)
+    private String descricao;
+
     @CreationTimestamp
-    @Column(name = "criado_em", updatable = false)
+    @Column(name = "criado_em", nullable = false, updatable = false)
     private Instant criadoEm;
 
     @UpdateTimestamp
-    @Column(name = "atualizado_em")
+    @Column(name = "atualizado_em", nullable = false)
     private Instant atualizadoEm;
+
 }
