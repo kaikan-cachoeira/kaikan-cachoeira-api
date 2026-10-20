@@ -43,18 +43,6 @@ class VendaConstraintsTest extends DbIntegrationTest {
         }).doesNotThrowAnyException();
     }
 
-    /**
-     * [achado / possível bug] preco_total já é o valor APÓS o desconto (dicionário:
-     * soma dos itens − desconto). A migration exige desconto <= preco_total. Logo, uma venda
-     * de 100 fichas com 60 de desconto (preco_total = 40) é rejeitada pelo banco, e o
-     * POST /eventos/{id}/vendas da H5 falharia em descontos acima de 50% do bruto.
-     * O dicionário só pede desconto >= 0.
-     */
-    @Test
-    void descontoMaiorQueOTotalPagoEhRejeitadoHojeEPodeBarrarVendaLegitima() {
-        assertViolacao(() -> insertVenda(evento, bd("60.00"), bd("40.00")), "chk_venda_desconto");
-    }
-
     @Test
     void descontoNegativoDeveSerRejeitado() {
         assertViolacao(() -> insertVenda(evento, bd("-1.00"), bd("10.00")), "chk_venda_desconto");
