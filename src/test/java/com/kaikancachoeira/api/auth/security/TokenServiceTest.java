@@ -1,5 +1,6 @@
 package com.kaikancachoeira.api.auth.security;
 
+import com.kaikancachoeira.api.support.IntegrationTestBase;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,7 +14,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
-class TokenServiceTest {
+class TokenServiceTest extends IntegrationTestBase {
 
     @Autowired
     private TokenService tokenService;
@@ -48,7 +49,7 @@ class TokenServiceTest {
     void deveGerarTokenComIssuerCorreto() {
         Jwt jwt = jwtDecoder.decode(gerarTokenValido());
 
-        assertEquals(jwtProperties.getIssuer(), jwt.getIssuer().toString());
+        assertEquals(jwtProperties.getIssuer(), jwt.getClaimAsString("iss"));
     }
 
     @Test
