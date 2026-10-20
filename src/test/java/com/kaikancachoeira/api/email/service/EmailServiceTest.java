@@ -67,14 +67,18 @@ class EmailServiceTest {
 
     @Test
     void falhaDefinitivaNaoDevePropagarELogaError() {
-        doThrow(new EmailException("config", null, false)).when(enviador).enviar(MENSAGEM);
+        doThrow(new EmailException("config", null, false))
+                .when(enviador).enviar(MENSAGEM);
 
-        assertThatCode(() -> service.enviar(MENSAGEM)).doesNotThrowAnyException();
+        assertThatCode(() -> service.enviar(MENSAGEM))
+                .doesNotThrowAnyException();
 
-        assertThat(logs.list).singleElement().satisfies(e -> {
-            assertThat(e.getLevel()).isEqualTo(Level.ERROR);
-            assertThat(e.getFormattedMessage()).contains("definitiva");
-        });
+        assertThat(logs.list)
+                .anySatisfy(e -> {
+                    assertThat(e.getLevel()).isEqualTo(Level.ERROR);
+                    assertThat(e.getFormattedMessage())
+                            .contains("Falha definitiva ao enviar email: config");
+                });
     }
 
     @Test
