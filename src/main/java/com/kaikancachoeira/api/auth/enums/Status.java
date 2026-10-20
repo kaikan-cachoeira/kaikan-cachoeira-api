@@ -1,4 +1,4 @@
-package com.kaikancachoeira.api.auth;
+package com.kaikancachoeira.api.auth.enums;
 
 public enum Status {
     ATIVO,
