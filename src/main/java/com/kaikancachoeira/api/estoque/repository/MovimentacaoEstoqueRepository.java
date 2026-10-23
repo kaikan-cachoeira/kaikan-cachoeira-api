@@ -17,8 +17,8 @@ public interface MovimentacaoEstoqueRepository extends JpaRepository<Movimentaca
             where e.produto.id = :produtoId
               and (:tipoId is null or m.tipo.id = :tipoId)
               and (:eventoId is null or m.eventoId = :eventoId)
-              and (:dataInicio is null or m.criadoEm >= :dataInicio)
-              and (:dataFim is null or m.criadoEm <= :dataFim)
+              and m.criadoEm >= :dataInicio
+              and m.criadoEm <= :dataFim
             order by m.criadoEm desc, m.id desc
             """,
             countQuery = """
@@ -26,8 +26,8 @@ public interface MovimentacaoEstoqueRepository extends JpaRepository<Movimentaca
             where m.estoque.produto.id = :produtoId
               and (:tipoId is null or m.tipo.id = :tipoId)
               and (:eventoId is null or m.eventoId = :eventoId)
-              and (:dataInicio is null or m.criadoEm >= :dataInicio)
-              and (:dataFim is null or m.criadoEm <= :dataFim)
+              and m.criadoEm >= :dataInicio
+              and m.criadoEm <= :dataFim
             """)
     Page<MovimentacaoEstoque> buscarPorProduto(@Param("produtoId") Long produtoId,
                                                @Param("tipoId") Integer tipoId,

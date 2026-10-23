@@ -71,14 +71,21 @@ public class MovimentacaoService {
     }
 
     @Transactional(readOnly = true)
-    public PaginaResponse<MovimentacaoResponse> historicoDoProduto(Long produtoId, Integer tipoId, Long eventoId,
-                                                                   Instant dataInicio, Instant dataFim,
-                                                                   int page, int size) {
+    public PaginaResponse<MovimentacaoResponse> historicoDoProduto(
+            Long produtoId, Integer tipoId, Long eventoId,
+            Instant dataInicio, Instant dataFim,
+            int page, int size
+    ) {
         if (!produtoRepository.existsById(produtoId)) {
             throw RecursoNaoEncontradoException.de("Produto", produtoId);
         }
+
+        Instant inicio = dataInicio != null ? dataInicio : Instant.EPOCH;
+        Instant fim = dataFim != null ? dataFim : Instant.parse("9999-12-31T23:59:59Z");
+
         Page<MovimentacaoEstoque> pagina = movimentacaoRepository.buscarPorProduto(
-                produtoId, tipoId, eventoId, dataInicio, dataFim, PageRequest.of(page, size));
+                produtoId, tipoId, eventoId, inicio, fim, PageRequest.of(page, size));
+
         return PaginaResponse.de(pagina.map(MovimentacaoResponse::de));
     }
 
