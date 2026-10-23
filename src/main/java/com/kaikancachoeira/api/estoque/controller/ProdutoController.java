@@ -25,7 +25,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/produtos")
 @PreAuthorize("hasAuthority('ESTOQUE_MENU')")
-public class ProdutoController {
+public class ProdutoController implements ProdutoApi {
 
     private final ProdutoService service;
 
@@ -33,6 +33,7 @@ public class ProdutoController {
         this.service = service;
     }
 
+    @Override
     @GetMapping
     public ResponseEntity<List<ProdutoResponse>> listar(@RequestParam(required = false) String q,
                                                         @RequestParam(required = false) List<Integer> categoriaId,
@@ -40,6 +41,7 @@ public class ProdutoController {
         return ResponseEntity.ok(service.listar(q, categoriaId, abaixoDoMinimo));
     }
 
+    @Override
     @GetMapping("/{id}")
     public ResponseEntity<ProdutoResponse> buscar(@PathVariable Long id) {
         return service.buscarPorId(id)
@@ -47,23 +49,27 @@ public class ProdutoController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @Override
     @PostMapping
     public ResponseEntity<ProdutoResponse> criar(@RequestBody @Valid ProdutoRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.criar(request));
     }
 
+    @Override
     @PostMapping(value = "/{id}/foto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<FotoResponse> enviarFoto(@PathVariable Long id,
                                                    @RequestParam("arquivo") MultipartFile arquivo) {
         return ResponseEntity.ok(service.atualizarFoto(id, arquivo));
     }
 
+    @Override
     @PutMapping("/{id}")
     public ResponseEntity<Void> atualizar(@PathVariable Long id, @RequestBody @Valid ProdutoRequest request) {
         service.atualizar(id, request);
         return ResponseEntity.noContent().build();
     }
 
+    @Override
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluir(@PathVariable Long id) {
         return service.excluir(id)
