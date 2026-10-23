@@ -48,6 +48,18 @@ spring.datasource.password=kaikan
 
 A API sobe em `http://localhost:8080`, com o Swagger em `http://localhost:8080/swagger-ui.html`.
 
+## Documentação da API
+
+A documentação interativa está disponível em `http://localhost:8080/swagger-ui.html`.
+
+O contrato OpenAPI em YAML pode ser consultado em `http://localhost:8080/v3/api-docs.yaml` e exportado com:
+
+```bash
+curl -f http://localhost:8080/v3/api-docs.yaml -o openapi.yaml
+```
+
+Após alterações nos endpoints ou em anotações OpenAPI, regenere o arquivo `openapi.yaml` e versione a atualização junto com as mudanças correspondentes.
+
 ## Padrões
 
 + Este repo segue os padrões de commit, branching e API definidos em [`kaikan-cachoeira-docs`](https://github.com/kaikan-cachoeira/kaikan-cachoeira-docs):
