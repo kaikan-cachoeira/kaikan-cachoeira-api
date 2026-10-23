@@ -14,7 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/categorias")
 @PreAuthorize("hasAuthority('ESTOQUE_MENU')")
-public class CategoriaController {
+public class CategoriaController implements CategoriaApi {
 
     private final CategoriaService service;
 
@@ -22,22 +22,26 @@ public class CategoriaController {
         this.service = service;
     }
 
+    @Override
     @GetMapping
     public ResponseEntity<List<CategoriaResponse>> listar() {
         return ResponseEntity.ok(service.listar());
     }
 
+    @Override
     @PostMapping
     public ResponseEntity<CategoriaResponse> criar(@RequestBody @Valid CategoriaRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.criar(request));
     }
 
+    @Override
     @PutMapping("/{id}")
     public ResponseEntity<CategoriaResponse> atualizar(@PathVariable Integer id,
                                                        @RequestBody @Valid CategoriaRequest request) {
         return ResponseEntity.ok(service.atualizar(id, request));
     }
 
+    @Override
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluir(@PathVariable Integer id) {
         service.excluir(id);

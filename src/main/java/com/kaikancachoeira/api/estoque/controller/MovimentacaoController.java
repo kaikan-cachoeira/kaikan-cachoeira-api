@@ -19,7 +19,7 @@ import java.util.List;
 
 @RestController
 @PreAuthorize("hasAuthority('ESTOQUE_MENU')")
-public class MovimentacaoController {
+public class MovimentacaoController implements MovimentacaoApi {
 
     private final MovimentacaoService service;
 
@@ -33,6 +33,7 @@ public class MovimentacaoController {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.movimentar(id, request));
     }
 
+    @Override
     @GetMapping("/produtos/{id}/movimentacoes")
     public ResponseEntity<PaginaResponse<MovimentacaoResponse>> historicoDoProduto(
             @PathVariable Long id,
@@ -46,11 +47,13 @@ public class MovimentacaoController {
                 dataInicio, dataFim, page, size));
     }
 
+    @Override
     @GetMapping("/produtos/{id}/estoques")
     public ResponseEntity<List<EstoqueResponse>> listarLotes(@PathVariable Long id) {
         return ResponseEntity.ok(service.listarLotes(id));
     }
 
+    @Override
     @GetMapping("/estoques/{id}/movimentacoes")
     public ResponseEntity<PaginaResponse<MovimentacaoResponse>> historicoDoLote(
             @PathVariable Long id,

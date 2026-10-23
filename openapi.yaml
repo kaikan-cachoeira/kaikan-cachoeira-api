@@ -1,0 +1,939 @@
+openapi: 3.1.0
+info:
+  title: Kaikan Cachoeira API
+  description: "API de gestão de eventos, estoque, doações, vendas e caixa do Kaikan\
+    \ de Cachoeira"
+  version: 0.0.1
+servers:
+- url: http://localhost:8080
+  description: Generated server url
+security:
+- bearerAuth: []
+tags:
+- name: Autenticação
+  description: "Login, renovação de sessão e recuperação de senha. Rotas públicas,\
+    \ sem JWT."
+- name: Produtos
+  description: "Consulta e gerenciamento de produtos do estoque, incluindo fotos."
+- name: Categorias
+  description: Consulta e gerenciamento das categorias de produtos.
+- name: Movimentações de estoque
+  description: Registro de movimentações e consulta de lotes e históricos do estoque.
+- name: Tipos de movimentação
+  description: Consulta dos tipos de movimentação de estoque disponíveis.
+paths:
+  /produtos/{id}:
+    get:
+      tags:
+      - Produtos
+      summary: Busca produto por ID
+      description: Retorna os dados de um produto específico.
+      operationId: buscar
+      parameters:
+      - name: id
+        in: path
+        description: ID do produto
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: Produto encontrado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProdutoResponse"
+        "404":
+          description: Produto não encontrado
+    put:
+      tags:
+      - Produtos
+      summary: Atualiza produto
+      description: Atualiza os dados de um produto existente.
+      operationId: atualizar
+      parameters:
+      - name: id
+        in: path
+        description: ID do produto
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        description: Novos dados do produto
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProdutoRequest"
+        required: true
+      responses:
+        "204":
+          description: Produto atualizado
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+    delete:
+      tags:
+      - Produtos
+      summary: Exclui produto
+      description: "Exclui o produto indicado, caso exista."
+      operationId: excluir
+      parameters:
+      - name: id
+        in: path
+        description: ID do produto
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "204":
+          description: Produto excluído
+        "404":
+          description: Produto não encontrado
+  /categorias/{id}:
+    put:
+      tags:
+      - Categorias
+      summary: Atualiza categoria
+      description: Atualiza os dados de uma categoria existente.
+      operationId: atualizar_1
+      parameters:
+      - name: id
+        in: path
+        description: ID da categoria
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        description: Novos dados da categoria
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoriaRequest"
+        required: true
+      responses:
+        "200":
+          description: Categoria atualizada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CategoriaResponse"
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+    delete:
+      tags:
+      - Categorias
+      summary: Exclui categoria
+      description: Solicita a exclusão da categoria indicada.
+      operationId: excluir_1
+      parameters:
+      - name: id
+        in: path
+        description: ID da categoria
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "204":
+          description: Categoria excluída
+  /produtos:
+    get:
+      tags:
+      - Produtos
+      summary: Lista produtos
+      description: |
+        Retorna os produtos cadastrados, permitindo aplicar filtros opcionais
+        por texto, categorias e situação de estoque abaixo do mínimo.
+      operationId: listar
+      parameters:
+      - name: q
+        in: query
+        description: Texto para pesquisa de produtos
+        required: false
+        schema:
+          type: string
+      - name: categoriaId
+        in: query
+        description: IDs das categorias para filtrar os produtos
+        required: false
+        schema:
+          type: array
+          items:
+            type: integer
+            format: int32
+      - name: abaixoDoMinimo
+        in: query
+        description: Filtra produtos abaixo do estoque mínimo
+        required: false
+        schema:
+          type: boolean
+      responses:
+        "200":
+          description: Lista de produtos retornada
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProdutoResponse"
+    post:
+      tags:
+      - Produtos
+      summary: Cadastra produto
+      description: Cria um produto a partir dos dados informados.
+      operationId: criar
+      requestBody:
+        description: Dados para cadastro do produto
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProdutoRequest"
+        required: true
+      responses:
+        "201":
+          description: Produto criado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProdutoResponse"
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+  /produtos/{id}/movimentacoes:
+    get:
+      tags:
+      - Movimentações de estoque
+      summary: Consulta histórico de movimentações do produto
+      description: |
+        Retorna o histórico paginado de movimentações de um produto.
+        Permite filtrar por tipo de movimentação, evento e intervalo de datas.
+        A paginação usa índice iniciado em zero.
+      operationId: historicoDoProduto
+      parameters:
+      - name: id
+        in: path
+        description: ID do produto
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: tipoMovimentacaoId
+        in: query
+        description: ID do tipo de movimentação
+        required: false
+        schema:
+          type: integer
+          format: int32
+      - name: eventoId
+        in: query
+        description: ID do evento relacionado
+        required: false
+        schema:
+          type: integer
+          format: int64
+      - name: dataInicio
+        in: query
+        description: Início do intervalo de consulta (ISO-8601)
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: dataFim
+        in: query
+        description: Fim do intervalo de consulta (ISO-8601)
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: page
+        in: query
+        description: "Índice da página, começando em zero"
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+          minimum: 0
+      - name: size
+        in: query
+        description: Quantidade de registros por página (de 1 a 100)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      responses:
+        "200":
+          description: Histórico retornado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PaginaResponseMovimentacaoResponse"
+    post:
+      tags:
+      - Movimentações de estoque
+      summary: Registra movimentação de estoque
+      description: Registra uma movimentação para o produto indicado e retorna o resultado
+        da operação.
+      operationId: movimentar
+      parameters:
+      - name: id
+        in: path
+        description: ID do produto
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        description: Dados da movimentação de estoque
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MovimentarEstoqueRequest"
+        required: true
+      responses:
+        "201":
+          description: Movimentação registrada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MovimentacaoResultadoResponse"
+        "400":
+          description: Dados da movimentação inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+  /produtos/{id}/foto:
+    post:
+      tags:
+      - Produtos
+      summary: Envia ou atualiza foto do produto
+      description: |
+        Envia uma imagem para o produto indicado.
+        A requisição deve usar multipart/form-data e o campo arquivo.
+      operationId: enviarFoto
+      parameters:
+      - name: id
+        in: path
+        description: ID do produto
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                arquivo:
+                  type: string
+                  format: binary
+                  description: Arquivo da foto do produto
+              required:
+              - arquivo
+      responses:
+        "200":
+          description: Foto processada com sucesso
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/FotoResponse"
+        "404":
+          description: Produto não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+  /categorias:
+    get:
+      tags:
+      - Categorias
+      summary: Lista categorias
+      description: Retorna as categorias disponíveis para classificação dos produtos.
+      operationId: listar_1
+      responses:
+        "200":
+          description: Lista de categorias retornada
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CategoriaResponse"
+    post:
+      tags:
+      - Categorias
+      summary: Cadastra categoria
+      description: Cria uma categoria a partir dos dados informados.
+      operationId: criar_1
+      requestBody:
+        description: Dados para cadastro da categoria
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoriaRequest"
+        required: true
+      responses:
+        "201":
+          description: Categoria criada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CategoriaResponse"
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+  /auth/refresh:
+    post:
+      tags:
+      - Autenticação
+      summary: Renova o par de tokens
+      description: |
+        Troca um refresh token válido por um novo par (access + refresh).
+
+        **Regras:**
+        - Rotação: o refresh token usado é revogado e um novo é emitido. Reutilizar o antigo resulta em 401.
+        - O refresh token é inválido se não existir, estiver revogado ou expirado.
+        - Chamadas concorrentes com o mesmo token: apenas uma tem sucesso.
+      operationId: refresh
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenRequest"
+        required: true
+      responses:
+        "200":
+          description: Novo par de tokens emitido
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RefreshTokenResponse"
+        "401":
+          description: "Refresh token inválido, revogado ou expirado"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+      security: []
+  /auth/redefinicao-senha:
+    post:
+      tags:
+      - Autenticação
+      summary: Redefine a senha a partir do token do e-mail
+      description: |
+        Define a nova senha usando o token recebido por e-mail.
+
+        **Efeitos:**
+        - Marca o token como usado.
+        - Revoga todos os refresh tokens do usuário.
+        - Se a conta estava `PENDENTE`, passa para `ATIVO`.
+      operationId: redefinirSenha
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RedefinicaoSenhaRequest"
+        required: true
+      responses:
+        "204":
+          description: Senha redefinida
+        "400":
+          description: "Token inválido, já usado ou expirado, ou dados inválidos"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Token inválido:
+                  description: Token inválido
+                  value:
+                    codigo: TOKEN_INVALIDO
+                    mensagem: Token inválido ou expirado
+                    campos: []
+                Senha curta:
+                  description: Senha curta
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: novaSenha
+                      mensagem: tamanho deve estar entre 8 e 255
+      security: []
+  /auth/recuperacao-senha:
+    post:
+      tags:
+      - Autenticação
+      summary: Solicita recuperação de senha
+      description: |
+        Envia por e-mail um link `{url-do-front}/redefinicao-senha?token={token}`, válido por 1 hora.
+
+        **Regras:**
+        - Sempre retorna 202, exista o e-mail ou não, para não revelar quais e-mails estão cadastrados.
+        - Contas `DESATIVADO` não recebem o e-mail.
+        - Tokens anteriores ainda não usados do mesmo usuário são invalidados.
+        - Este fluxo também define a primeira senha de contas `PENDENTE`.
+      operationId: recuperarSenha
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecuperacaoSenhaRequest"
+        required: true
+      responses:
+        "202":
+          description: Requisição aceita (independe de o e-mail existir)
+      security: []
+  /auth/logout:
+    post:
+      tags:
+      - Autenticação
+      summary: Encerra a sessão
+      description: "Revoga o refresh token informado. O access token continua válido\
+        \ até expirar, então o front deve descartá-lo."
+      operationId: logout
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogoutRequest"
+        required: true
+      responses:
+        "204":
+          description: Refresh token revogado
+      security: []
+  /auth/login:
+    post:
+      tags:
+      - Autenticação
+      summary: Autentica o usuário
+      description: |
+        Valida e-mail e senha e devolve um access token (JWT de curta duração) e um refresh token.
+
+        **Regras:**
+        - A conta precisa estar `ATIVO`. Contas `PENDENTE` (primeira senha ainda não definida) e `DESATIVADO` recebem a mesma resposta de credenciais inválidas.
+        - O 401 é idêntico para e-mail inexistente, senha errada ou conta não ativa, para não revelar quais e-mails estão cadastrados.
+        - Só o hash do refresh token é persistido; o valor bruto é devolvido apenas aqui.
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+        required: true
+      responses:
+        "200":
+          description: Autenticado com sucesso
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Credenciais inválidas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              example:
+                codigo: CREDENCIAIS_INVALIDAS
+                mensagem: Usuário ou senha inválidos
+                campos: []
+      security: []
+  /tipos-movimentacao:
+    get:
+      tags:
+      - Tipos de movimentação
+      summary: Lista tipos de movimentação
+      description: Retorna os tipos de movimentação cadastrados para uso nas operações
+        de estoque.
+      operationId: listar_2
+      responses:
+        "200":
+          description: Lista de tipos de movimentação retornada
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TipoMovimentacaoResponse"
+  /produtos/{id}/estoques:
+    get:
+      tags:
+      - Movimentações de estoque
+      summary: Lista lotes de estoque de um produto
+      description: Retorna os lotes de estoque associados ao produto indicado.
+      operationId: listarLotes
+      parameters:
+      - name: id
+        in: path
+        description: ID do produto
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: Lotes retornados
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EstoqueResponse"
+  /estoques/{id}/movimentacoes:
+    get:
+      tags:
+      - Movimentações de estoque
+      summary: Consulta histórico de movimentações de um lote
+      description: |
+        Retorna o histórico paginado de movimentações do lote indicado.
+        A paginação usa índice iniciado em zero.
+      operationId: historicoDoLote
+      parameters:
+      - name: id
+        in: path
+        description: ID do lote de estoque
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: page
+        in: query
+        description: "Índice da página, começando em zero"
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+          minimum: 0
+      - name: size
+        in: query
+        description: Quantidade de registros por página (de 1 a 100)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      responses:
+        "200":
+          description: Histórico do lote retornado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PaginaResponseMovimentacaoResponse"
+components:
+  schemas:
+    ProdutoRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          maxLength: 150
+          minLength: 0
+        descricao:
+          type: string
+        categoriaId:
+          type: integer
+          format: int32
+        estoqueMinimo:
+          type: integer
+          format: int32
+          minimum: 0
+      required:
+      - nome
+    CampoErro:
+      type: object
+      properties:
+        campo:
+          type: string
+        mensagem:
+          type: string
+    ErroResponse:
+      type: object
+      properties:
+        codigo:
+          type: string
+        mensagem:
+          type: string
+        campos:
+          type: array
+          items:
+            $ref: "#/components/schemas/CampoErro"
+    CategoriaRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          maxLength: 100
+          minLength: 0
+        descricao:
+          type: string
+          maxLength: 255
+          minLength: 0
+      required:
+      - nome
+    CategoriaResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        nome:
+          type: string
+        descricao:
+          type: string
+    CategoriaResumo:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        nome:
+          type: string
+    ProdutoResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        nome:
+          type: string
+        descricao:
+          type: string
+        categoria:
+          $ref: "#/components/schemas/CategoriaResumo"
+        fotoUrl:
+          type: string
+        quantidadeAtual:
+          type: integer
+          format: int32
+        estoqueMinimo:
+          type: integer
+          format: int32
+    MovimentarEstoqueRequest:
+      type: object
+      properties:
+        tipoMovimentacaoId:
+          type: integer
+          format: int32
+        quantidade:
+          type: integer
+          format: int32
+          minimum: 0
+        custoTotal:
+          type: number
+          minimum: 0
+        eventoId:
+          type: integer
+          format: int64
+        observacoes:
+          type: string
+      required:
+      - quantidade
+      - tipoMovimentacaoId
+    MovimentacaoResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        estoqueId:
+          type: integer
+          format: int64
+        tipo:
+          type: string
+        quantidade:
+          type: integer
+          format: int32
+        custoTotal:
+          type: number
+        custoUnitario:
+          type: number
+        eventoId:
+          type: integer
+          format: int64
+        observacoes:
+          type: string
+        criadoEm:
+          type: string
+          format: date-time
+    MovimentacaoResultadoResponse:
+      type: object
+      properties:
+        movimentacoes:
+          type: array
+          items:
+            $ref: "#/components/schemas/MovimentacaoResponse"
+        quantidadeAtual:
+          type: integer
+          format: int32
+    FotoResponse:
+      type: object
+      properties:
+        url:
+          type: string
+    RefreshTokenRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+      required:
+      - refreshToken
+    RefreshTokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+    RedefinicaoSenhaRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+        novaSenha:
+          type: string
+          maxLength: 255
+          minLength: 8
+      required:
+      - novaSenha
+      - token
+    RecuperacaoSenhaRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          minLength: 0
+      required:
+      - email
+    LogoutRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+      required:
+      - refreshToken
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          minLength: 0
+        senha:
+          type: string
+          maxLength: 255
+          minLength: 0
+      required:
+      - email
+      - senha
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        usuario:
+          $ref: "#/components/schemas/UsuarioResponse"
+    UsuarioResponse:
+      type: object
+      properties:
+        nome:
+          type: string
+        cargo:
+          type: string
+        permissoes:
+          type: array
+          items:
+            type: string
+    TipoMovimentacaoResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        codigo:
+          type: string
+        descricao:
+          type: string
+        direcao:
+          type: string
+          enum:
+          - ENTRADA
+          - SAIDA
+        exigeCusto:
+          type: boolean
+    PaginaResponseMovimentacaoResponse:
+      type: object
+      properties:
+        itens:
+          type: array
+          items:
+            $ref: "#/components/schemas/MovimentacaoResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalItens:
+          type: integer
+          format: int64
+        totalPaginas:
+          type: integer
+          format: int32
+    EstoqueResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        quantidadeInicial:
+          type: integer
+          format: int32
+        quantidadeAtual:
+          type: integer
+          format: int32
+        custoUnitario:
+          type: number
+        custoTotal:
+          type: number
+        criadoEm:
+          type: string
+          format: date-time
+  securitySchemes:
+    bearerAuth:
+      type: http
+      description: Token JWT obtido pelo endpoint de login
+      scheme: bearer
+      bearerFormat: JWT

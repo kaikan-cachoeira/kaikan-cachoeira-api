@@ -13,7 +13,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/tipos-movimentacao")
 @PreAuthorize("hasAuthority('ESTOQUE_MENU')")
-public class TipoMovimentacaoController {
+public class TipoMovimentacaoController implements TipoMovimentacaoApi {
 
     private final MovimentacaoService service;
 
@@ -21,6 +21,7 @@ public class TipoMovimentacaoController {
         this.service = service;
     }
 
+    @Override
     @GetMapping
     public ResponseEntity<List<TipoMovimentacaoResponse>> listar() {
         return ResponseEntity.ok(service.listarTipos());
