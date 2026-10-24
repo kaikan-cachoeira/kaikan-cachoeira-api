@@ -1,13 +1,17 @@
 package com.kaikancachoeira.api.evento.repository;
 
 import com.kaikancachoeira.api.evento.entity.Evento;
+import com.kaikancachoeira.api.evento.enums.TipoEvento;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Optional;
 
 public interface EventoRepository extends JpaRepository<Evento, Long>, JpaSpecificationExecutor<Evento> {
 
@@ -45,4 +49,15 @@ public interface EventoRepository extends JpaRepository<Evento, Long>, JpaSpecif
             """, nativeQuery = true)
     BigDecimal somarCustosAdicionais(@Param("id") Long id);
 
+    boolean existsByTipoEventoAndStatusCodigoAndIdNot(TipoEvento tipoEvento, String codigo, Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT e FROM Evento e WHERE e.id = :id")
+    Optional<Evento> findByIdParaAtualizacao(@Param("id") Long id);
+
+    @Query(value = "SELECT EXISTS (SELECT 1 FROM venda WHERE evento_id = :id)", nativeQuery = true)
+    boolean possuiVendas(@Param("id") Long id);
+
+    @Query(value = "SELECT EXISTS (SELECT 1 FROM pagamento_caixa WHERE evento_id = :id)", nativeQuery = true)
+    boolean possuiLancamentosCaixa(@Param("id") Long id);
 }
