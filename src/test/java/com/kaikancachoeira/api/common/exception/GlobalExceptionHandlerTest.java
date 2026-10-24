@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.core.MethodParameter;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -94,11 +95,61 @@ class GlobalExceptionHandlerTest {
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
     private MockMvc mockMvc;
 
+    private DataIntegrityViolationException violacao(String constraint) {
+        return new DataIntegrityViolationException("could not execute statement",
+                new RuntimeException("ERROR: violates constraint \"" + constraint + "\""));
+    }
+
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(new ControllerFake())
                 .setControllerAdvice(handler)
                 .build();
+    }
+
+    @Test
+    void nomeEPeriodoDuplicadosDevemVirar409() {
+        ResponseEntity<ErroResponse> resposta = handler.handleIntegridade(violacao("uq_evento_nome_periodo"));
+
+        assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(resposta.getBody().codigo()).isEqualTo("EVENTO_DUPLICADO");
+    }
+
+    @Test
+    void segundoEventoEmAndamentoDeveVirar409() {
+        ResponseEntity<ErroResponse> resposta = handler.handleIntegridade(violacao("uq_evento_em_andamento"));
+
+        assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(resposta.getBody().codigo()).isEqualTo("EVENTO_EM_ANDAMENTO_EXISTENTE");
+    }
+
+    @Test
+    void periodoInvalidoDeveVirar400ComOCampoPeriodoValido() {
+        ResponseEntity<ErroResponse> resposta = handler.handleIntegridade(violacao("chk_evento_periodo"));
+
+        assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(resposta.getBody().codigo()).isEqualTo("VALIDACAO");
+        assertThat(resposta.getBody().campos())
+                .extracting(CampoErro::campo)
+                .containsExactly("periodoValido");
+    }
+
+    @Test
+    void constraintDesconhecidaDeveVirar409GenericoSemVazarAMensagemDoBanco() {
+        ResponseEntity<ErroResponse> resposta = handler.handleIntegridade(violacao("fk_segredo_interno"));
+
+        assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(resposta.getBody().codigo()).isEqualTo("CONFLITO_DADOS");
+        assertThat(resposta.getBody().mensagem()).doesNotContain("fk_segredo_interno");
+    }
+
+    @Test
+    void excecaoSemCausaNaoDeveQuebrarOHandler() {
+        ResponseEntity<ErroResponse> resposta =
+                handler.handleIntegridade(new DataIntegrityViolationException("sem causa"));
+
+        assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(resposta.getBody().codigo()).isEqualTo("CONFLITO_DADOS");
     }
 
     // ------------------------------------------------------- ApiException
