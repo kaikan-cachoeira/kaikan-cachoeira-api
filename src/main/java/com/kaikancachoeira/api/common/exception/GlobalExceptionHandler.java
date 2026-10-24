@@ -2,6 +2,8 @@ package com.kaikancachoeira.api.common.exception;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.TypeMismatchException;
+import org.springframework.core.NestedExceptionUtils;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -99,6 +101,36 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErroResponse> handleAcessoNegado(AccessDeniedException ex) {
         return resposta(HttpStatus.FORBIDDEN, ACESSO_NEGADO,
                 "Você não tem permissão para realizar esta operação.", List.of());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErroResponse> handleIntegridade(DataIntegrityViolationException ex) {
+        String detalhe = mensagemRaiz(ex);
+
+        if (detalhe.contains("uq_evento_nome_periodo")) {
+            return resposta(HttpStatus.CONFLICT, "EVENTO_DUPLICADO",
+                    "Já existe um evento com este nome e período.", List.of());
+        }
+
+        if (detalhe.contains("uq_evento_em_andamento")) {
+            return resposta(HttpStatus.CONFLICT, "EVENTO_EM_ANDAMENTO_EXISTENTE",
+                    "Já existe um evento em andamento.", List.of());
+        }
+
+        if (detalhe.contains("chk_evento_periodo")) {
+            return resposta(HttpStatus.BAD_REQUEST, VALIDACAO, "Dados inválidos",
+                    List.of(new CampoErro("periodoValido",
+                            "A data de encerramento deve ser posterior à data de início")));
+        }
+
+        log.warn("Violação de integridade não mapeada: {}", detalhe);
+        return resposta(HttpStatus.CONFLICT, "CONFLITO_DADOS",
+                "A operação viola uma regra de integridade dos dados.", List.of());
+    }
+
+    private String mensagemRaiz(Throwable ex) {
+        String mensagem = NestedExceptionUtils.getMostSpecificCause(ex).getMessage();
+        return mensagem == null ? "" : mensagem;
     }
 
     @ExceptionHandler(Exception.class)
