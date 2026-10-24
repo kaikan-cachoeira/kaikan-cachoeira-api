@@ -23,12 +23,8 @@ tags:
   description: Registro de movimentações e consulta de lotes e históricos do estoque.
 - name: Tipos de movimentação
   description: Consulta dos tipos de movimentação de estoque disponíveis.
-- name: Vendas
-  description: "Registro e cancelamento de vendas e descontos de produtos do evento."
-- name: Caixa
-  description: Lançamentos de venda e devolução de fichas e resumo do caixa do evento.
-- name: Fiados
-  description: Consulta e quitação de fiados do evento.
+- name: Doações
+  description: "Registro, edição e consulta das doações recebidas pela associação."
 paths:
   /produtos/{id}:
     get:
@@ -832,228 +828,42 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PaginaResponseMovimentacaoResponse"
-  /eventos/{eventoId}/vendas:
-    post:
-      tags:
-      - Vendas
-      summary: Registra venda
-      description: |
-        Registra a venda do evento em andamento com baixa automática no estoque (FIFO por lote).
-        O desconto da venda é calculado pelo backend a partir do valor final informado.
-        Exige a permissão VENDAS_MENU.
-      operationId: registrarVenda
-      parameters:
-      - name: eventoId
-        in: path
-        description: ID do evento
-        required: true
-        schema:
-          type: integer
-          format: int64
-      requestBody:
-        description: Itens da venda e valor final opcional
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/VendaRequest"
-        required: true
-      responses:
-        "201":
-          description: Venda registrada
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/VendaResponse"
-        "400":
-          description: Dados inválidos
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErroResponse"
-        "409":
-          description: Evento fora de andamento ou saldo de estoque insuficiente
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErroResponse"
-  /eventos/{eventoId}/vendas/{vendaId}/cancelamento:
-    post:
-      tags:
-      - Vendas
-      summary: Cancela venda
-      description: |
-        Cancela a venda de forma definitiva e estorna o estoque no lote de origem.
-        Não é permitido cancelar venda de evento encerrado.
-        Exige a permissão VENDAS_MENU ou EVENTOS_MENU.
-      operationId: cancelarVenda
-      parameters:
-      - name: eventoId
-        in: path
-        description: ID do evento
-        required: true
-        schema:
-          type: integer
-          format: int64
-      - name: vendaId
-        in: path
-        description: ID da venda
-        required: true
-        schema:
-          type: integer
-          format: int64
-      responses:
-        "204":
-          description: Venda cancelada
-        "404":
-          description: Venda não encontrada
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErroResponse"
-        "409":
-          description: Venda já cancelada ou evento encerrado
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErroResponse"
-  /eventos/{eventoId}/produtos/{produtoEventoId}/desconto:
-    patch:
-      tags:
-      - Vendas
-      summary: Aplica desconto ao produto do evento
-      description: |
-        Define o novo preço do produto no cardápio do evento. O desconto é por unidade
-        e vale apenas para as vendas feitas a partir daí.
-        Exige a permissão VENDAS_MENU.
-      operationId: aplicarDesconto
-      parameters:
-      - name: eventoId
-        in: path
-        description: ID do evento
-        required: true
-        schema:
-          type: integer
-          format: int64
-      - name: produtoEventoId
-        in: path
-        description: ID do produto do evento
-        required: true
-        schema:
-          type: integer
-          format: int64
-      requestBody:
-        description: Novo preço do produto
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DescontoRequest"
-        required: true
-      responses:
-        "200":
-          description: Desconto aplicado
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/DescontoProdutoResponse"
-        "400":
-          description: Dados inválidos
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErroResponse"
-        "404":
-          description: Produto não encontrado no evento
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErroResponse"
-        "409":
-          description: Evento fora de andamento ou produto já com desconto
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErroResponse"
-    delete:
-      tags:
-      - Vendas
-      summary: Remove desconto do produto do evento
-      description: |
-        Zera o desconto do produto. Sem desconto aplicado, nada é alterado.
-        Exige a permissão VENDAS_MENU.
-      operationId: removerDesconto
-      parameters:
-      - name: eventoId
-        in: path
-        description: ID do evento
-        required: true
-        schema:
-          type: integer
-          format: int64
-      - name: produtoEventoId
-        in: path
-        description: ID do produto do evento
-        required: true
-        schema:
-          type: integer
-          format: int64
-      responses:
-        "200":
-          description: Desconto removido
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/DescontoProdutoResponse"
-        "404":
-          description: Produto não encontrado no evento
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErroResponse"
-        "409":
-          description: Evento fora de andamento
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErroResponse"
-  /eventos/{eventoId}/caixa:
+  /doacoes:
     get:
       tags:
-      - Caixa
-      summary: Consulta o caixa do evento
+      - Doações
+      summary: Lista doações
       description: |
-        Retorna o resumo do caixa e o histórico paginado de lançamentos, do mais recente
-        para o mais antigo. Exige a permissão CAIXA_MENU.
-      operationId: consultarCaixa
+        Retorna as doações paginadas, da mais recente para a mais antiga.
+        Os filtros tipo e eventoId aceitam mais de um valor (parâmetro repetido) e se combinam.
+        O parâmetro q pesquisa pelo nome do doador ou pela descrição do item.
+        A paginação usa índice iniciado em zero.
+      operationId: listarDoacoes
       parameters:
-      - name: eventoId
-        in: path
-        description: ID do evento
-        required: true
+      - name: q
+        in: query
+        description: Texto para pesquisar por doador ou descrição do item
+        required: false
         schema:
-          type: integer
-          format: int64
+          type: string
       - name: tipo
         in: query
-        description: Filtra pelo tipo do lançamento
+        description: "Tipos da doação: dinheiro, produto ou reabastecimento (aceita\
+          \ repetição)"
         required: false
         schema:
-          type: string
-          enum:
-          - VENDA_FICHA
-          - DEVOLUCAO_FICHA
-          - QUITACAO_FIADO
-      - name: formaPagamento
+          type: array
+          items:
+            type: string
+      - name: eventoId
         in: query
-        description: Filtra pela forma de pagamento
+        description: IDs dos eventos (aceita repetição)
         required: false
         schema:
-          type: string
-          enum:
-          - PIX
-          - DEBITO
-          - CREDITO
-          - DINHEIRO
-          - FIADO
+          type: array
+          items:
+            type: integer
+            format: int64
       - name: page
         in: query
         description: "Índice da página, começando em zero"
@@ -1075,196 +885,80 @@ paths:
           minimum: 1
       responses:
         "200":
-          description: Caixa retornado
+          description: Doações retornadas
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/CaixaResponse"
-        "404":
-          description: Evento não encontrado
+                $ref: "#/components/schemas/PaginaResponseDoacaoResponse"
+        "400":
+          description: Parâmetros inválidos
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
     post:
       tags:
-      - Caixa
-      summary: Registra lançamento no caixa
+      - Doações
+      summary: Registra doação
       description: |
-        Registra venda ou devolução de fichas no evento em andamento.
-        A forma de pagamento FIADO só é aceita em venda de fichas e exige o nome do devedor.
-        Exige a permissão CAIXA_MENU.
-      operationId: registrarLancamento
-      parameters:
-      - name: eventoId
-        in: path
-        description: ID do evento
-        required: true
-        schema:
-          type: integer
-          format: int64
+        Registra uma doação em dinheiro, de produto ou de reabastecimento.
+        Somente o reabastecimento altera o estoque: cria um lote sem custo e a movimentação DOACAO.
+        O evento deve existir e não pode estar encerrado.
+      operationId: registrarDoacao
       requestBody:
-        description: Dados do lançamento
+        description: Dados da doação
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CaixaRequest"
+              $ref: "#/components/schemas/DoacaoRequest"
         required: true
       responses:
         "201":
-          description: Lançamento registrado
+          description: Doação registrada
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/RegistroCaixaResponse"
+                $ref: "#/components/schemas/DoacaoResponse"
         "400":
           description: Dados inválidos
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
-        "404":
-          description: Evento não encontrado
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErroResponse"
         "409":
-          description: Evento fora de andamento
+          description: Evento encerrado
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
-  /eventos/{eventoId}/caixa/{lancamentoId}:
-    delete:
+  /doacoes/{id}:
+    put:
       tags:
-      - Caixa
-      summary: Exclui lançamento do caixa
+      - Doações
+      summary: Atualiza doação
       description: |
-        Corrige registros acidentais do caixa, com exclusão física, apenas com o evento em andamento.
-        Excluir uma quitação reabre o fiado. Excluir a venda fiada exclui também o fiado pendente.
-        Exige a permissão CAIXA_MENU.
-      operationId: excluirLancamento
+        Atualiza os dados de uma doação em qualquer status do evento.
+        O tipo e o produto (no reabastecimento) não podem ser alterados.
+        Quando a quantidade de um reabastecimento muda, o lote e a movimentação DOACAO são ajustados.
+      operationId: atualizarDoacao
       parameters:
-      - name: eventoId
+      - name: id
         in: path
-        description: ID do evento
-        required: true
-        schema:
-          type: integer
-          format: int64
-      - name: lancamentoId
-        in: path
-        description: ID do lançamento
-        required: true
-        schema:
-          type: integer
-          format: int64
-      responses:
-        "200":
-          description: Lançamento excluído
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ExclusaoCaixaResponse"
-        "404":
-          description: Lançamento não encontrado
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErroResponse"
-        "409":
-          description: Evento fora de andamento ou fiado já quitado
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErroResponse"
-  /eventos/{eventoId}/fiados:
-    get:
-      tags:
-      - Fiados
-      summary: Lista fiados do evento
-      description: |
-        Retorna os fiados do evento, podendo filtrar por situação.
-        Exige a permissão CAIXA_MENU.
-      operationId: listarFiados
-      parameters:
-      - name: eventoId
-        in: path
-        description: ID do evento
-        required: true
-        schema:
-          type: integer
-          format: int64
-      - name: situacao
-        in: query
-        description: Filtra pela situação do fiado
-        required: false
-        schema:
-          type: string
-          enum:
-          - pendente
-          - quitado
-      responses:
-        "200":
-          description: Fiados retornados
-          content:
-            '*/*':
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/FiadoResponse"
-        "400":
-          description: Situação inválida
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErroResponse"
-        "404":
-          description: Evento não encontrado
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErroResponse"
-  /eventos/{eventoId}/fiados/{fiadoId}/quitacao:
-    patch:
-      tags:
-      - Fiados
-      summary: Quita fiado
-      description: |
-        Marca o fiado como quitado e gera o lançamento de quitação no caixa.
-        O fiado pode ser quitado mesmo com o evento encerrado.
-        Exige a permissão CAIXA_MENU.
-      operationId: quitarFiado
-      parameters:
-      - name: eventoId
-        in: path
-        description: ID do evento
-        required: true
-        schema:
-          type: integer
-          format: int64
-      - name: fiadoId
-        in: path
-        description: ID do fiado
+        description: ID da doação
         required: true
         schema:
           type: integer
           format: int64
       requestBody:
-        description: Forma de pagamento da quitação
+        description: Dados da doação
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/QuitacaoRequest"
+              $ref: "#/components/schemas/DoacaoRequest"
         required: true
       responses:
-        "200":
-          description: Fiado quitado
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/QuitacaoResponse"
+        "204":
+          description: Doação atualizada
         "400":
           description: Dados inválidos
           content:
@@ -1272,13 +966,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
         "404":
-          description: Fiado não encontrado
+          description: Doação não encontrada
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
         "409":
-          description: Fiado já quitado
+          description: Quantidade menor que a já consumida do lote
           content:
             application/json:
               schema:
@@ -1601,6 +1295,108 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/MovimentacaoResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalItens:
+          type: integer
+          format: int64
+        totalPaginas:
+          type: integer
+          format: int32
+    DoacaoRequest:
+      type: object
+      properties:
+        eventoId:
+          type: integer
+          format: int64
+        tipo:
+          type: string
+          description: "dinheiro, produto ou reabastecimento (sem diferenciar maiúsculas)"
+          minLength: 1
+        valor:
+          type: number
+          description: Obrigatório e maior que zero no tipo dinheiro
+        formaPagamento:
+          type: string
+          description: "PIX, DEBITO, CREDITO ou DINHEIRO. Obrigatório no tipo dinheiro"
+        produtoId:
+          type: integer
+          format: int64
+          description: Obrigatório no reabastecimento e imutável na edição
+        nome:
+          type: string
+          description: Descrição do item. Obrigatória no tipo produto
+          maxLength: 150
+          minLength: 0
+        quantidade:
+          type: integer
+          format: int32
+          description: Obrigatória e maior que zero no reabastecimento
+        doador:
+          type: string
+          maxLength: 150
+          minLength: 1
+        valorFicha:
+          type: number
+          description: Valor da ficha de agradecimento (maior ou igual a zero)
+          minimum: 0
+      required:
+      - doador
+      - eventoId
+      - tipo
+    DoacaoResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        eventoId:
+          type: integer
+          format: int64
+        tipo:
+          type: string
+          enum:
+          - DINHEIRO
+          - PRODUTO
+          - REABASTECIMENTO
+        valor:
+          type: number
+        formaPagamento:
+          type: string
+          enum:
+          - PIX
+          - DEBITO
+          - CREDITO
+          - DINHEIRO
+        produtoId:
+          type: integer
+          format: int64
+        nome:
+          type: string
+        quantidade:
+          type: integer
+          format: int32
+        doador:
+          type: string
+        valorFicha:
+          type: number
+        criadoEm:
+          type: string
+          format: date-time
+        atualizadoEm:
+          type: string
+          format: date-time
+    PaginaResponseDoacaoResponse:
+      type: object
+      properties:
+        itens:
+          type: array
+          items:
+            $ref: "#/components/schemas/DoacaoResponse"
         page:
           type: integer
           format: int32
