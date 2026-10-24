@@ -2,13 +2,14 @@ package com.kaikancachoeira.api.evento.service;
 
 import com.kaikancachoeira.api.common.exception.ConflitoException;
 import com.kaikancachoeira.api.common.exception.RecursoNaoEncontradoException;
-import com.kaikancachoeira.api.evento.dto.EventoDetalheResponse;
-import com.kaikancachoeira.api.evento.dto.EventoRequest;
-import com.kaikancachoeira.api.evento.dto.EventoResponse;
-import com.kaikancachoeira.api.evento.dto.ResumoEvento;
+import com.kaikancachoeira.api.common.exception.RequisicaoInvalidaException;
+import com.kaikancachoeira.api.evento.dto.*;
+import com.kaikancachoeira.api.evento.entity.CustoEvento;
 import com.kaikancachoeira.api.evento.entity.Evento;
 import com.kaikancachoeira.api.evento.entity.StatusEvento;
 import com.kaikancachoeira.api.evento.enums.TipoEvento;
+import com.kaikancachoeira.api.evento.exception.TransicaoStatusEventoInvalida;
+import com.kaikancachoeira.api.evento.repository.CustoEventoRepository;
 import com.kaikancachoeira.api.evento.repository.EventoRepository;
 import com.kaikancachoeira.api.evento.repository.EventoSpecifications;
 import com.kaikancachoeira.api.evento.repository.StatusEventoRepository;
@@ -17,22 +18,35 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 public class EventoService {
 
     private static final String NAO_INICIADO = "NAO_INICIADO";
     private static final String EM_ANDAMENTO = "EM_ANDAMENTO";
+    private static final String ENCERRADO = "ENCERRADO";
+
+    private static final Map<String, Set<String>> TRANSICOES = Map.of(
+            NAO_INICIADO, Set.of(EM_ANDAMENTO),
+            EM_ANDAMENTO, Set.of(ENCERRADO, NAO_INICIADO),
+            ENCERRADO, Set.of(EM_ANDAMENTO));
 
     private final EventoRepository eventoRepository;
     private final StatusEventoRepository statusEventoRepository;
+    private final CustoEventoRepository custoEventoRepository;
+    private final Clock clock;
 
-    public EventoService(EventoRepository eventoRepository, StatusEventoRepository statusEventoRepository) {
+    public EventoService(EventoRepository eventoRepository, StatusEventoRepository statusEventoRepository, CustoEventoRepository custoEventoRepository, Clock clock) {
         this.eventoRepository = eventoRepository;
         this.statusEventoRepository = statusEventoRepository;
+        this.custoEventoRepository = custoEventoRepository;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
@@ -126,6 +140,84 @@ public class EventoService {
         return EventoResponse.de(eventoRepository.saveAndFlush(evento));
     }
 
+    @Transactional
+    public void alterarStatus(Long id, AlteracaoStatusEventoRequest request) {
+        Evento evento = eventoRepository.findByIdParaAtualizacao(id)
+                .orElseThrow(() -> RecursoNaoEncontradoException.de("Evento", id));
+
+        StatusEvento novo = statusEventoRepository.findById(request.status())
+                .orElseThrow(() -> new RequisicaoInvalidaException("STATUS_INVALIDO", "Status inválido"));
+
+        String atual = evento.getStatus().getCodigo();
+        String destino = novo.getCodigo();
+
+        if (!TRANSICOES.getOrDefault(atual, Set.of()).contains(destino)) {
+            throw new TransicaoStatusEventoInvalida(atual, destino);
+        }
+
+        boolean temCustos = request.custos() != null && !request.custos().isEmpty();
+        if (temCustos && !ENCERRADO.equals(destino)) {
+            throw new RequisicaoInvalidaException("CUSTOS_NAO_PERMITIDOS",
+                    "Custos só podem ser informados ao encerrar o evento.");
+        }
+
+        switch (destino) {
+            case EM_ANDAMENTO -> {
+                validarSemOutroEmAndamento(evento);
+
+                if (NAO_INICIADO.equals(atual)) {
+                    evento.setIniciadoEm(clock.instant());
+                } else {
+                    evento.setEncerradoEm(null);
+                }
+            }
+            case ENCERRADO -> {
+                evento.setEncerradoEm(clock.instant());
+
+                if (temCustos) {
+                    salvarCustos(evento, request.custos());
+                }
+            }
+            case NAO_INICIADO -> {
+                if (eventoRepository.possuiVendas(id) || eventoRepository.possuiLancamentosCaixa(id)) {
+                    throw new ConflitoException("DESFAZER_INICIO_BLOQUEADO",
+                            "Não é possível desfazer o início: já existem vendas ou lançamentos de caixa.");
+                }
+
+                evento.setIniciadoEm(null);
+            }
+            default -> throw new IllegalStateException("Status não tratado: " + destino);
+        }
+
+        evento.setStatus(novo);
+        eventoRepository.saveAndFlush(evento);
+    }
+
+    private void validarSemOutroEmAndamento(Evento evento) {
+        boolean outroEmAndamento = evento.getTipoEvento() == TipoEvento.EVENTO
+                && eventoRepository.existsByTipoEventoAndStatusCodigoAndIdNot(
+                TipoEvento.EVENTO, EM_ANDAMENTO, evento.getId());
+
+        if (outroEmAndamento) {
+            throw new ConflitoException("EVENTO_EM_ANDAMENTO_EXISTENTE", "Já existe um evento em andamento.");
+        }
+    }
+
+    private void salvarCustos(Evento evento, List<CustoEventoRequest> custos) {
+        List<CustoEvento> entidades = custos.stream()
+                .map(c -> {
+                    CustoEvento custo = new CustoEvento();
+                    custo.setEvento(evento);
+                    custo.setNome(c.nome().trim());
+                    custo.setDescricao(c.descricao());
+                    custo.setValor(c.valor());
+                    return custo;
+                })
+                .toList();
+
+        custoEventoRepository.saveAll(entidades);
+    }
+
     private void preencher(Evento evento, String nome, EventoRequest request) {
         evento.setNome(nome);
         evento.setObservacoes(request.observacoes());
@@ -136,5 +228,9 @@ public class EventoService {
 
     private ConflitoException eventoDuplicado() {
         return new ConflitoException("EVENTO_DUPLICADO", "Já existe um evento com este nome e período.");
+    }
+
+    private TransicaoStatusEventoInvalida transicaoInvalida(String statusAtual, String novoStatus) {
+        return new TransicaoStatusEventoInvalida(statusAtual, novoStatus);
     }
 }
