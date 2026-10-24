@@ -5,6 +5,7 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,6 +23,10 @@ public interface ProdutoRepository extends JpaRepository<Produto, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Produto p where p.id = :id and p.ativo = true")
     Optional<Produto> findByIdParaAtualizacao(@Param("id") Long id);
+
+    @Modifying(flushAutomatically = true)
+    @Query("update Produto p set p.quantidadeAtual = p.quantidadeAtual + :delta, p.atualizadoEm = :agora where p.id = :id")
+    void ajustarQuantidade(@Param("id") Long id, @Param("delta") int delta, @Param("agora") Instant agora);
 
     boolean existsByNomeIgnoreCase(String nome);
 

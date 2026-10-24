@@ -37,6 +37,11 @@ public class GlobalExceptionHandler {
                 .body(ErroResponse.de(ex.getCodigo(), ex.getMessage()));
     }
 
+    @ExceptionHandler(ValidacaoException.class)
+    public ResponseEntity<ErroResponse> handleValidacaoNegocio(ValidacaoException ex) {
+        return resposta(HttpStatus.BAD_REQUEST, VALIDACAO, ex.getMessage(), ex.getCampos());
+    }
+
     // @Valid em corpo de requisição
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErroResponse> handleValidacaoCorpo(MethodArgumentNotValidException ex) {
