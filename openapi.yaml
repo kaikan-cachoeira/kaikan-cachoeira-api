@@ -25,6 +25,8 @@ tags:
   description: Consulta dos tipos de movimentação de estoque disponíveis.
 - name: Doações
   description: "Registro, edição e consulta das doações recebidas pela associação."
+- name: Relatórios
+  description: "Relatório individual por evento com vendas, custos, doações e lucro."
 paths:
   /produtos/{id}:
     get:
@@ -977,6 +979,47 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
+  /eventos/{id}/relatorio:
+    get:
+      tags:
+      - Relatórios
+      summary: Consulta o relatório do evento
+      description: |
+        Retorna o relatório do evento. Evento encerrado gera o relatório final;
+        evento em andamento gera o relatório parcial (parcial = true);
+        evento não iniciado retorna 409.
+        Para eventos do tipo EVENTO retorna resumo financeiro, produtos, custos adicionais,
+        caixa, doações, movimentações de consumo e perda, ranking de produtos e vendas por hora.
+        Para reuniões retorna apenas os custos (compras, consumo interno e custos adicionais).
+        Vendas canceladas não entram em nenhum valor.
+      operationId: gerarRelatorio
+      parameters:
+      - name: id
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: Relatório retornado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RelatorioResponse"
+        "404":
+          description: Evento não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+        "409":
+          description: Evento não iniciado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
 components:
   schemas:
     ProdutoRequest:
@@ -1624,6 +1667,272 @@ components:
           format: int64
         totalRecebido:
           type: number
+    RelatorioResponse:
+      oneOf:
+      - $ref: "#/components/schemas/RelatorioEventoResponse"
+      - $ref: "#/components/schemas/RelatorioReuniaoResponse"
+    RelatorioEventoResponse:
+      type: object
+      description: Relatório de um evento do tipo EVENTO
+      properties:
+        eventoId:
+          type: integer
+          format: int64
+        nome:
+          type: string
+        tipoEvento:
+          type: string
+          enum:
+          - EVENTO
+          - REUNIAO
+        status:
+          $ref: "#/components/schemas/StatusResumo"
+        parcial:
+          type: boolean
+        resumo:
+          $ref: "#/components/schemas/ResumoFinanceiro"
+        produtos:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProdutoRelatorio"
+        custosAdicionais:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustoAdicionalRelatorio"
+        caixa:
+          $ref: "#/components/schemas/ResumoCaixaResponse"
+        doacoes:
+          $ref: "#/components/schemas/DoacoesRelatorio"
+        movimentacoesEvento:
+          type: array
+          items:
+            $ref: "#/components/schemas/MovimentacaoRelatorio"
+        produtosMaisVendidos:
+          $ref: "#/components/schemas/RankingProdutos"
+        vendasPorHora:
+          $ref: "#/components/schemas/VendasPorHora"
+    RelatorioReuniaoResponse:
+      type: object
+      description: Relatório de um evento do tipo REUNIAO (somente custos)
+      properties:
+        eventoId:
+          type: integer
+          format: int64
+        nome:
+          type: string
+        tipoEvento:
+          type: string
+          enum:
+          - EVENTO
+          - REUNIAO
+        status:
+          $ref: "#/components/schemas/StatusResumo"
+        parcial:
+          type: boolean
+        resumo:
+          $ref: "#/components/schemas/ResumoReuniao"
+        itens:
+          type: array
+          items:
+            $ref: "#/components/schemas/MovimentacaoRelatorio"
+        custosAdicionais:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustoAdicionalRelatorio"
+    ResumoFinanceiro:
+      type: object
+      properties:
+        receitaVendas:
+          type: number
+        descontosVendas:
+          type: number
+        custoCompras:
+          type: number
+        custoFichasAgradecimento:
+          type: number
+        custoIngredientes:
+          type: number
+        totalCustosAdicionais:
+          type: number
+        doacoesEmDinheiro:
+          type: number
+        receitaTotal:
+          type: number
+        custoTotal:
+          type: number
+        lucro:
+          type: number
+        vendas:
+          type: integer
+          format: int64
+    ResumoReuniao:
+      type: object
+      properties:
+        custoCompras:
+          type: number
+        custoConsumoInterno:
+          type: number
+        totalCustosAdicionais:
+          type: number
+        custoTotal:
+          type: number
+    ProdutoRelatorio:
+      type: object
+      properties:
+        produtoEventoId:
+          type: integer
+          format: int64
+        nome:
+          type: string
+        origem:
+          type: string
+          enum:
+          - ESTOQUE
+          - PRODUZIDO
+        quantidadePrevista:
+          type: integer
+          format: int32
+        quantidadeVendida:
+          type: integer
+          format: int64
+        totalDescontos:
+          type: number
+        custoTotal:
+          type: number
+        receitaVendas:
+          type: number
+        lucroBruto:
+          type: number
+        lucroLiquido:
+          type: number
+        precoVendido:
+          type: number
+    CustoAdicionalRelatorio:
+      type: object
+      properties:
+        nome:
+          type: string
+        descricao:
+          type: string
+        valor:
+          type: number
+    DoacoesRelatorio:
+      type: object
+      properties:
+        itens:
+          type: array
+          items:
+            $ref: "#/components/schemas/DoacaoItemRelatorio"
+        emDinheiro:
+          type: array
+          items:
+            $ref: "#/components/schemas/DoacaoDinheiroRelatorio"
+        totalEmDinheiro:
+          type: number
+    DoacaoItemRelatorio:
+      type: object
+      properties:
+        tipo:
+          type: string
+          enum:
+          - DINHEIRO
+          - PRODUTO
+          - REABASTECIMENTO
+        produtoId:
+          type: integer
+          format: int64
+        nome:
+          type: string
+        quantidade:
+          type: integer
+          format: int32
+        doador:
+          type: string
+        valorFicha:
+          type: number
+    DoacaoDinheiroRelatorio:
+      type: object
+      properties:
+        doador:
+          type: string
+        valor:
+          type: number
+        formaPagamento:
+          type: string
+          enum:
+          - PIX
+          - DEBITO
+          - CREDITO
+          - DINHEIRO
+        valorFicha:
+          type: number
+    MovimentacaoRelatorio:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        tipo:
+          type: string
+        produtoId:
+          type: integer
+          format: int64
+        produtoNome:
+          type: string
+        quantidade:
+          type: integer
+          format: int32
+        custoUnitario:
+          type: number
+        custoTotal:
+          type: number
+        observacoes:
+          type: string
+        criadoEm:
+          type: string
+          format: date-time
+    RankingProdutos:
+      type: object
+      properties:
+        quantidadeVendasTotais:
+          type: integer
+          format: int64
+        ranking:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProdutoRanking"
+    ProdutoRanking:
+      type: object
+      properties:
+        produtoEventoId:
+          type: integer
+          format: int64
+        nome:
+          type: string
+        categoria:
+          type: string
+        quantidadeVendida:
+          type: integer
+          format: int64
+    VendasPorHora:
+      type: object
+      properties:
+        quantidadeVendasTotais:
+          type: integer
+          format: int64
+        ranking:
+          type: array
+          items:
+            $ref: "#/components/schemas/VendaHora"
+    VendaHora:
+      type: object
+      properties:
+        hora:
+          type: integer
+          format: int32
+        quantidadeVendas:
+          type: integer
+          format: int64
     PaginaResponseLancamentoResponse:
       type: object
       properties:
