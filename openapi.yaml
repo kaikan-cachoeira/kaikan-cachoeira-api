@@ -23,6 +23,8 @@ tags:
   description: Registro de movimentações e consulta de lotes e históricos do estoque.
 - name: Tipos de movimentação
   description: Consulta dos tipos de movimentação de estoque disponíveis.
+- name: Doações
+  description: "Registro, edição e consulta das doações recebidas pela associação."
 paths:
   /produtos/{id}:
     get:
@@ -826,6 +828,155 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PaginaResponseMovimentacaoResponse"
+  /doacoes:
+    get:
+      tags:
+      - Doações
+      summary: Lista doações
+      description: |
+        Retorna as doações paginadas, da mais recente para a mais antiga.
+        Os filtros tipo e eventoId aceitam mais de um valor (parâmetro repetido) e se combinam.
+        O parâmetro q pesquisa pelo nome do doador ou pela descrição do item.
+        A paginação usa índice iniciado em zero.
+      operationId: listarDoacoes
+      parameters:
+      - name: q
+        in: query
+        description: Texto para pesquisar por doador ou descrição do item
+        required: false
+        schema:
+          type: string
+      - name: tipo
+        in: query
+        description: "Tipos da doação: dinheiro, produto ou reabastecimento (aceita\
+          \ repetição)"
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      - name: eventoId
+        in: query
+        description: IDs dos eventos (aceita repetição)
+        required: false
+        schema:
+          type: array
+          items:
+            type: integer
+            format: int64
+      - name: page
+        in: query
+        description: "Índice da página, começando em zero"
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+          minimum: 0
+      - name: size
+        in: query
+        description: Quantidade de registros por página (de 1 a 100)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      responses:
+        "200":
+          description: Doações retornadas
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PaginaResponseDoacaoResponse"
+        "400":
+          description: Parâmetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+    post:
+      tags:
+      - Doações
+      summary: Registra doação
+      description: |
+        Registra uma doação em dinheiro, de produto ou de reabastecimento.
+        Somente o reabastecimento altera o estoque: cria um lote sem custo e a movimentação DOACAO.
+        O evento deve existir e não pode estar encerrado.
+      operationId: registrarDoacao
+      requestBody:
+        description: Dados da doação
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DoacaoRequest"
+        required: true
+      responses:
+        "201":
+          description: Doação registrada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DoacaoResponse"
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+        "409":
+          description: Evento encerrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+  /doacoes/{id}:
+    put:
+      tags:
+      - Doações
+      summary: Atualiza doação
+      description: |
+        Atualiza os dados de uma doação em qualquer status do evento.
+        O tipo e o produto (no reabastecimento) não podem ser alterados.
+        Quando a quantidade de um reabastecimento muda, o lote e a movimentação DOACAO são ajustados.
+      operationId: atualizarDoacao
+      parameters:
+      - name: id
+        in: path
+        description: ID da doação
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        description: Dados da doação
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DoacaoRequest"
+        required: true
+      responses:
+        "204":
+          description: Doação atualizada
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+        "404":
+          description: Doação não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+        "409":
+          description: Quantidade menor que a já consumida do lote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
 components:
   schemas:
     ProdutoRequest:
@@ -1144,6 +1295,108 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/MovimentacaoResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalItens:
+          type: integer
+          format: int64
+        totalPaginas:
+          type: integer
+          format: int32
+    DoacaoRequest:
+      type: object
+      properties:
+        eventoId:
+          type: integer
+          format: int64
+        tipo:
+          type: string
+          description: "dinheiro, produto ou reabastecimento (sem diferenciar maiúsculas)"
+          minLength: 1
+        valor:
+          type: number
+          description: Obrigatório e maior que zero no tipo dinheiro
+        formaPagamento:
+          type: string
+          description: "PIX, DEBITO, CREDITO ou DINHEIRO. Obrigatório no tipo dinheiro"
+        produtoId:
+          type: integer
+          format: int64
+          description: Obrigatório no reabastecimento e imutável na edição
+        nome:
+          type: string
+          description: Descrição do item. Obrigatória no tipo produto
+          maxLength: 150
+          minLength: 0
+        quantidade:
+          type: integer
+          format: int32
+          description: Obrigatória e maior que zero no reabastecimento
+        doador:
+          type: string
+          maxLength: 150
+          minLength: 1
+        valorFicha:
+          type: number
+          description: Valor da ficha de agradecimento (maior ou igual a zero)
+          minimum: 0
+      required:
+      - doador
+      - eventoId
+      - tipo
+    DoacaoResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        eventoId:
+          type: integer
+          format: int64
+        tipo:
+          type: string
+          enum:
+          - DINHEIRO
+          - PRODUTO
+          - REABASTECIMENTO
+        valor:
+          type: number
+        formaPagamento:
+          type: string
+          enum:
+          - PIX
+          - DEBITO
+          - CREDITO
+          - DINHEIRO
+        produtoId:
+          type: integer
+          format: int64
+        nome:
+          type: string
+        quantidade:
+          type: integer
+          format: int32
+        doador:
+          type: string
+        valorFicha:
+          type: number
+        criadoEm:
+          type: string
+          format: date-time
+        atualizadoEm:
+          type: string
+          format: date-time
+    PaginaResponseDoacaoResponse:
+      type: object
+      properties:
+        itens:
+          type: array
+          items:
+            $ref: "#/components/schemas/DoacaoResponse"
         page:
           type: integer
           format: int32
