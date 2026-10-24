@@ -128,6 +128,21 @@ public class GlobalExceptionHandler {
                             "A data de encerramento deve ser posterior à data de início")));
         }
 
+        if (detalhe.contains("chk_produto_evento_origem")) {
+            return resposta(HttpStatus.BAD_REQUEST, VALIDACAO,
+                    "Dados inválidos para a origem do item do cardápio.", List.of());
+        }
+
+        if (detalhe.contains("uq_produto_evento")) {
+            return resposta(HttpStatus.CONFLICT, "PRODUTO_JA_NO_EVENTO",
+                    "Este produto já está no cardápio do evento.", List.of());
+        }
+
+        if (detalhe.contains("uq_produto_evento_nome")) {
+            return resposta(HttpStatus.CONFLICT, "NOME_DUPLICADO",
+                    "Já existe um item com este nome no cardápio deste evento.", List.of());
+        }
+
         log.warn("Violação de integridade não mapeada: {}", detalhe);
         return resposta(HttpStatus.CONFLICT, "CONFLITO_DADOS",
                 "A operação viola uma regra de integridade dos dados.", List.of());

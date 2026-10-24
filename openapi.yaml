@@ -1472,6 +1472,233 @@ components:
           type: number
         totalCustosAdicionais:
           type: number
+    ItemVendaRequest:
+      type: object
+      properties:
+        produtoEventoId:
+          type: integer
+          format: int64
+        quantidade:
+          type: integer
+          format: int32
+          minimum: 1
+      required:
+      - produtoEventoId
+      - quantidade
+    VendaRequest:
+      type: object
+      properties:
+        valorFinal:
+          type: number
+          minimum: 0
+        itens:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/ItemVendaRequest"
+      required:
+      - itens
+    VendaResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        criadoEm:
+          type: string
+          format: date-time
+        desconto:
+          type: number
+        precoTotal:
+          type: number
+    DescontoRequest:
+      type: object
+      properties:
+        novoPreco:
+          type: number
+          minimum: 0
+      required:
+      - novoPreco
+    DescontoProdutoResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        precoVenda:
+          type: number
+        desconto:
+          type: number
+        descontoAplicadoEm:
+          type: string
+          format: date-time
+        precoComDesconto:
+          type: number
+    CaixaRequest:
+      type: object
+      properties:
+        tipo:
+          type: string
+          enum:
+          - VENDA_FICHA
+          - DEVOLUCAO_FICHA
+          - QUITACAO_FIADO
+        valor:
+          type: number
+          exclusiveMinimum: 0
+        formaPagamento:
+          type: string
+          enum:
+          - PIX
+          - DEBITO
+          - CREDITO
+          - DINHEIRO
+          - FIADO
+        nomeDevedor:
+          type: string
+          maxLength: 150
+        observacao:
+          type: string
+          maxLength: 255
+      required:
+      - formaPagamento
+      - tipo
+      - valor
+    QuitacaoRequest:
+      type: object
+      properties:
+        formaPagamento:
+          type: string
+          enum:
+          - PIX
+          - DEBITO
+          - CREDITO
+          - DINHEIRO
+          - FIADO
+      required:
+      - formaPagamento
+    LancamentoResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        tipo:
+          type: string
+          enum:
+          - VENDA_FICHA
+          - DEVOLUCAO_FICHA
+          - QUITACAO_FIADO
+        valor:
+          type: number
+        formaPagamento:
+          type: string
+          enum:
+          - PIX
+          - DEBITO
+          - CREDITO
+          - DINHEIRO
+          - FIADO
+        nomeDevedor:
+          type: string
+        criadoEm:
+          type: string
+          format: date-time
+    ResumoCaixaResponse:
+      type: object
+      properties:
+        fichasVendidas:
+          type: number
+        fichasDevolvidas:
+          type: number
+        saldoFichas:
+          type: number
+        porFormaPagamento:
+          type: object
+          additionalProperties:
+            type: number
+        fiadosEmAberto:
+          type: number
+        quantidadeFiadosEmAberto:
+          type: integer
+          format: int64
+        totalRecebido:
+          type: number
+    PaginaResponseLancamentoResponse:
+      type: object
+      properties:
+        itens:
+          type: array
+          items:
+            $ref: "#/components/schemas/LancamentoResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalItens:
+          type: integer
+          format: int64
+        totalPaginas:
+          type: integer
+          format: int32
+    CaixaResponse:
+      type: object
+      properties:
+        resumo:
+          $ref: "#/components/schemas/ResumoCaixaResponse"
+        lancamentos:
+          $ref: "#/components/schemas/PaginaResponseLancamentoResponse"
+    RegistroCaixaResponse:
+      type: object
+      properties:
+        lancamento:
+          $ref: "#/components/schemas/LancamentoResponse"
+        resumo:
+          $ref: "#/components/schemas/ResumoCaixaResponse"
+    ExclusaoCaixaResponse:
+      type: object
+      properties:
+        resumo:
+          $ref: "#/components/schemas/ResumoCaixaResponse"
+    FiadoResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        nomeDevedor:
+          type: string
+        valor:
+          type: number
+        observacoes:
+          type: string
+        quitado:
+          type: boolean
+        quitadoEm:
+          type: string
+          format: date-time
+        formaPagamento:
+          type: string
+          enum:
+          - PIX
+          - DEBITO
+          - CREDITO
+          - DINHEIRO
+          - FIADO
+        criadoEm:
+          type: string
+          format: date-time
+    QuitacaoResponse:
+      type: object
+      properties:
+        fiado:
+          $ref: "#/components/schemas/FiadoResponse"
+        lancamento:
+          $ref: "#/components/schemas/LancamentoResponse"
+        resumo:
+          $ref: "#/components/schemas/ResumoCaixaResponse"
   securitySchemes:
     bearerAuth:
       type: http
