@@ -16,7 +16,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/eventos")
-public class EventoController {
+public class EventoController implements EventoApi {
 
     private final EventoService service;
 
@@ -24,6 +24,7 @@ public class EventoController {
         this.service = service;
     }
 
+    @Override
     @GetMapping
     @PreAuthorize("hasAuthority('EVENTOS_LEITURA')")
     public ResponseEntity<List<EventoResponse>> listar(
@@ -40,6 +41,7 @@ public class EventoController {
                 .body(response);
     }
 
+    @Override
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('EVENTOS_MENU')")
     public ResponseEntity<EventoDetalheResponse> buscar(@PathVariable Long id) {
@@ -50,6 +52,7 @@ public class EventoController {
                 .body(response);
     }
 
+    @Override
     @PostMapping
     @PreAuthorize("hasAuthority('EVENTOS_MENU')")
     public ResponseEntity<EventoResponse> criar(@RequestBody @Valid EventoRequest request) {
@@ -60,6 +63,7 @@ public class EventoController {
                 .body(response);
     }
 
+    @Override
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('EVENTOS_MENU')")
     public ResponseEntity<EventoResponse> atualizar(
