@@ -24,7 +24,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/produtos")
-@PreAuthorize("hasAuthority('ESTOQUE_MENU')")
 public class ProdutoController implements ProdutoApi {
 
     private final ProdutoService service;
@@ -35,14 +34,18 @@ public class ProdutoController implements ProdutoApi {
 
     @Override
     @GetMapping
-    public ResponseEntity<List<ProdutoResponse>> listar(@RequestParam(required = false) String q,
-                                                        @RequestParam(required = false) List<Integer> categoriaId,
-                                                        @RequestParam(required = false) Boolean abaixoDoMinimo) {
+    @PreAuthorize("hasAnyAuthority('ESTOQUE_MENU', 'PRODUTOS_LEITURA')")
+    public ResponseEntity<List<ProdutoResponse>> listar(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) List<Integer> categoriaId,
+            @RequestParam(required = false) Boolean abaixoDoMinimo
+    ) {
         return ResponseEntity.ok(service.listar(q, categoriaId, abaixoDoMinimo));
     }
 
     @Override
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ESTOQUE_MENU', 'PRODUTOS_LEITURA')")
     public ResponseEntity<ProdutoResponse> buscar(@PathVariable Long id) {
         return service.buscarPorId(id)
                 .map(ResponseEntity::ok)
@@ -51,12 +54,14 @@ public class ProdutoController implements ProdutoApi {
 
     @Override
     @PostMapping
+    @PreAuthorize("hasAuthority('ESTOQUE_MENU')")
     public ResponseEntity<ProdutoResponse> criar(@RequestBody @Valid ProdutoRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.criar(request));
     }
 
     @Override
     @PostMapping(value = "/{id}/foto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority('ESTOQUE_MENU')")
     public ResponseEntity<FotoResponse> enviarFoto(@PathVariable Long id,
                                                    @RequestParam("arquivo") MultipartFile arquivo) {
         return ResponseEntity.ok(service.atualizarFoto(id, arquivo));
@@ -64,6 +69,7 @@ public class ProdutoController implements ProdutoApi {
 
     @Override
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ESTOQUE_MENU')")
     public ResponseEntity<Void> atualizar(@PathVariable Long id, @RequestBody @Valid ProdutoRequest request) {
         service.atualizar(id, request);
         return ResponseEntity.noContent().build();
@@ -71,6 +77,7 @@ public class ProdutoController implements ProdutoApi {
 
     @Override
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ESTOQUE_MENU')")
     public ResponseEntity<Void> excluir(@PathVariable Long id) {
         return service.excluir(id)
                 ? ResponseEntity.noContent().build()
