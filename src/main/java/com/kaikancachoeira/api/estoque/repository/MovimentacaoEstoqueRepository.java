@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface MovimentacaoEstoqueRepository extends JpaRepository<MovimentacaoEstoque, Long> {
@@ -43,6 +45,14 @@ public interface MovimentacaoEstoqueRepository extends JpaRepository<Movimentaca
             """,
             countQuery = "select count(m) from MovimentacaoEstoque m where m.estoque.id = :estoqueId")
     Page<MovimentacaoEstoque> buscarPorLote(@Param("estoqueId") Long estoqueId, Pageable pageable);
+
+    @Query("""
+            select m from MovimentacaoEstoque m join fetch m.tipo t
+            where m.itemVendaId in :itemVendaIds and t.codigo = :codigoTipo
+            order by m.id
+            """)
+    List<MovimentacaoEstoque> buscarPorItensVendaETipo(@Param("itemVendaIds") Collection<Long> itemVendaIds,
+                                                        @Param("codigoTipo") String codigoTipo);
 
     @Query(value = "select tipo_evento from evento where id = :eventoId", nativeQuery = true)
     Optional<String> findTipoEvento(@Param("eventoId") Long eventoId);
