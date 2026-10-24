@@ -1,5 +1,6 @@
 package com.kaikancachoeira.api.evento.controller;
 
+import com.kaikancachoeira.api.evento.dto.AlteracaoStatusEventoRequest;
 import com.kaikancachoeira.api.evento.dto.EventoDetalheResponse;
 import com.kaikancachoeira.api.evento.dto.EventoRequest;
 import com.kaikancachoeira.api.evento.dto.EventoResponse;
@@ -75,6 +76,19 @@ public class EventoController implements EventoApi {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(response);
+    }
+
+    @PatchMapping("/{id}")
+    @PreAuthorize("hasAuthority('EVENTOS_MENU')")
+    public ResponseEntity<Void> alterarStatus(
+            @PathVariable Long id,
+            @RequestBody @Valid AlteracaoStatusEventoRequest request
+    ) {
+        service.alterarStatus(id, request);
+
+        return ResponseEntity
+                .status(HttpStatus.NO_CONTENT)
+                .build();
     }
 
 }
