@@ -9,10 +9,7 @@ import com.kaikancachoeira.api.evento.entity.Evento;
 import com.kaikancachoeira.api.evento.entity.StatusEvento;
 import com.kaikancachoeira.api.evento.enums.TipoEvento;
 import com.kaikancachoeira.api.evento.exception.TransicaoStatusEventoInvalida;
-import com.kaikancachoeira.api.evento.repository.CustoEventoRepository;
-import com.kaikancachoeira.api.evento.repository.EventoRepository;
-import com.kaikancachoeira.api.evento.repository.EventoSpecifications;
-import com.kaikancachoeira.api.evento.repository.StatusEventoRepository;
+import com.kaikancachoeira.api.evento.repository.*;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -41,12 +38,14 @@ public class EventoService {
     private final StatusEventoRepository statusEventoRepository;
     private final CustoEventoRepository custoEventoRepository;
     private final Clock clock;
+    private final ProdutoEventoRepository produtoEventoRepository;
 
-    public EventoService(EventoRepository eventoRepository, StatusEventoRepository statusEventoRepository, CustoEventoRepository custoEventoRepository, Clock clock) {
+    public EventoService(EventoRepository eventoRepository, StatusEventoRepository statusEventoRepository, CustoEventoRepository custoEventoRepository, Clock clock, ProdutoEventoRepository produtoEventoRepository) {
         this.eventoRepository = eventoRepository;
         this.statusEventoRepository = statusEventoRepository;
         this.custoEventoRepository = custoEventoRepository;
         this.clock = clock;
+        this.produtoEventoRepository = produtoEventoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -191,6 +190,37 @@ public class EventoService {
 
         evento.setStatus(novo);
         eventoRepository.saveAndFlush(evento);
+    }
+
+    @Transactional
+    public void excluir(Long id) {
+        Evento evento = eventoRepository.findByIdParaAtualizacao(id)
+                .orElseThrow(() -> RecursoNaoEncontradoException.de("Evento", id));
+
+        if (!NAO_INICIADO.equals(evento.getStatus().getCodigo())) {
+            throw new ConflitoException(
+                    "EXCLUSAO_EVENTO_STATUS_INVALIDO",
+                    "Só é possível excluir eventos que ainda não foram iniciados."
+            );
+        }
+
+        boolean possuiDependencias = eventoRepository.possuiVendas(id)
+                || eventoRepository.possuiDoacoes(id)
+                || eventoRepository.possuiMovimentacoesEstoque(id)
+                || eventoRepository.possuiLancamentosCaixa(id);
+
+        if (possuiDependencias) {
+            throw new ConflitoException(
+                    "EXCLUSAO_EVENTO_COM_REGISTROS",
+                    "Não é possível excluir um evento que possui vendas, doações, movimentações de estoque ou lançamentos de caixa."
+            );
+        }
+
+        produtoEventoRepository.deleteByEventoId(id);
+        custoEventoRepository.deleteByEventoId(id);
+
+        eventoRepository.delete(evento);
+        eventoRepository.flush();
     }
 
     private void validarSemOutroEmAndamento(Evento evento) {

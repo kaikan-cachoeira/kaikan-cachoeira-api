@@ -60,4 +60,22 @@ public interface EventoRepository extends JpaRepository<Evento, Long>, JpaSpecif
 
     @Query(value = "SELECT EXISTS (SELECT 1 FROM pagamento_caixa WHERE evento_id = :id)", nativeQuery = true)
     boolean possuiLancamentosCaixa(@Param("id") Long id);
+
+    @Query(value = """
+        SELECT EXISTS (
+            SELECT 1
+            FROM doacao
+            WHERE evento_id = :id
+        )
+        """, nativeQuery = true)
+    boolean possuiDoacoes(@Param("id") Long id);
+
+    @Query(value = """
+        SELECT EXISTS (
+            SELECT 1
+            FROM movimentacao_estoque
+            WHERE evento_id = :id
+        )
+        """, nativeQuery = true)
+    boolean possuiMovimentacoesEstoque(@Param("id") Long id);
 }
