@@ -9,6 +9,7 @@ import java.time.Instant;
 public record EventoResponse(
         Long id,
         String nome,
+        @Schema(description = "Observações (opcional)", nullable = true) String observacoes,
         TipoEvento tipoEvento,
         StatusResumo status,
         @Schema(description = "Início previsto") Instant dataHoraInicio,
@@ -21,6 +22,7 @@ public record EventoResponse(
         return new EventoResponse(
                 e.getId(),
                 e.getNome(),
+                e.getObservacoes(),
                 e.getTipoEvento(),
                 StatusResumo.de(e.getStatus()),
                 e.getInicioPrevistoEm(),
