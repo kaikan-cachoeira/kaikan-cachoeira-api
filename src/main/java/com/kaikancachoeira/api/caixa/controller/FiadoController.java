@@ -14,7 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/eventos/{eventoId}/fiados")
 @PreAuthorize("hasAuthority('CAIXA_MENU')")
-public class FiadoController {
+public class FiadoController implements FiadoApi {
 
     private final FiadoService service;
 

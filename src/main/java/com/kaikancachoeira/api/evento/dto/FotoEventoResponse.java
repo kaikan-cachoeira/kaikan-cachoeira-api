@@ -1,3 +1,7 @@
 package com.kaikancachoeira.api.evento.dto;
 
-public record FotoEventoResponse(String url) {}
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public record FotoEventoResponse(
+        @Schema(description = "URL relativa da foto salva", example = "/arquivos/3f2a....png") String url
+) {}

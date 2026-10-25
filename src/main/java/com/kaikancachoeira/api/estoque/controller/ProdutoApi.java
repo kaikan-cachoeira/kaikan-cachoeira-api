@@ -1,4 +1,3 @@
-
 package com.kaikancachoeira.api.estoque.controller;
 
 import com.kaikancachoeira.api.estoque.dto.FotoResponse;
@@ -7,6 +6,7 @@ import com.kaikancachoeira.api.estoque.dto.ProdutoResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -57,7 +57,11 @@ public interface ProdutoApi {
             @ApiResponse(
                     responseCode = "404",
                     description = "Produto não encontrado",
-                    content = @Content
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class),
+                            examples = @ExampleObject(name = "Recurso não encontrado", value = """
+                                    {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Produto não encontrado: 123","campos": []}
+                                    """))
             )
     })
     ResponseEntity<ProdutoResponse> buscar(
@@ -78,7 +82,10 @@ public interface ProdutoApi {
                             mediaType = "application/json",
                             schema = @Schema(
                                     implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class
-                            )
+                            ),
+                            examples = @ExampleObject(name = "Dados inválidos", value = """
+                                    {"codigo": "VALIDACAO","mensagem": "Dados inválidos","campos": [{"campo": "nome","mensagem": "Nome é obrigatório"}]}
+                                    """)
                     )
             )
     })
@@ -106,7 +113,10 @@ public interface ProdutoApi {
                             mediaType = "application/json",
                             schema = @Schema(
                                     implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class
-                            )
+                            ),
+                            examples = @ExampleObject(name = "Recurso não encontrado", value = """
+                                    {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Produto não encontrado: 123","campos": []}
+                                    """)
                     )
             )
     })
@@ -131,9 +141,18 @@ public interface ProdutoApi {
                             mediaType = "application/json",
                             schema = @Schema(
                                     implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class
-                            )
+                            ),
+                            examples = @ExampleObject(name = "Dados inválidos", value = """
+                                    {"codigo": "VALIDACAO","mensagem": "Dados inválidos","campos": [{"campo": "nome","mensagem": "Nome é obrigatório"}]}
+                                    """)
                     )
-            )
+            ),
+            @ApiResponse(responseCode = "404", description = "Produto não encontrado",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class),
+                            examples = @ExampleObject(name = "Recurso não encontrado", value = """
+                                    {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Produto não encontrado: 123","campos": []}
+                                    """)))
     })
     ResponseEntity<Void> atualizar(
             @Parameter(description = "ID do produto", required = true)
@@ -158,7 +177,11 @@ public interface ProdutoApi {
             @ApiResponse(
                     responseCode = "404",
                     description = "Produto não encontrado",
-                    content = @Content
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class),
+                            examples = @ExampleObject(name = "Recurso não encontrado", value = """
+                                    {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Produto não encontrado: 123","campos": []}
+                                    """))
             )
     })
     ResponseEntity<Void> excluir(

@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/eventos/{eventoId}/caixa")
 @PreAuthorize("hasAuthority('CAIXA_MENU')")
-public class CaixaController {
+public class CaixaController implements CaixaApi {
 
     private final CaixaService service;
 

@@ -1,4 +1,3 @@
-// src/main/java/com/kaikancachoeira/api/evento/controller/ProdutoEventoController.java
 package com.kaikancachoeira.api.evento.controller;
 
 import com.kaikancachoeira.api.evento.dto.FotoEventoResponse;
@@ -18,7 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/eventos/{eventoId}/produtos")
 @PreAuthorize("hasAuthority('EVENTOS_MENU')")
-public class ProdutoEventoController {
+public class ProdutoEventoController implements ProdutoEventoApi {
 
     private final ProdutoEventoService service;
 

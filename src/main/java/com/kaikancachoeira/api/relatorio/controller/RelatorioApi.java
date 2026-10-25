@@ -5,6 +5,7 @@ import com.kaikancachoeira.api.relatorio.dto.RelatorioResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -37,7 +38,9 @@ public interface RelatorioApi {
                     description = "Evento não encontrado",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = ErroResponse.class)
+                            schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Recurso não encontrado", value = """
+                        {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Evento não encontrado: 123","campos": []}
+                        """)
                     )
             ),
             @ApiResponse(
@@ -45,7 +48,9 @@ public interface RelatorioApi {
                     description = "Evento não iniciado",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = ErroResponse.class)
+                            schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Conflito de negócio", value = """
+                        {"codigo": "EVENTO_NAO_INICIADO","mensagem": "Evento não iniciado.","campos": []}
+                        """)
                     )
             )
     })

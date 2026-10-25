@@ -2,6 +2,7 @@ package com.kaikancachoeira.api.evento.dto;
 
 import com.kaikancachoeira.api.evento.entity.Evento;
 import com.kaikancachoeira.api.evento.enums.TipoEvento;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
 
@@ -10,10 +11,10 @@ public record EventoResponse(
         String nome,
         TipoEvento tipoEvento,
         StatusResumo status,
-        Instant dataHoraInicio,
-        Instant dataHoraEncerramento,
-        Instant iniciadoEm,
-        Instant encerradoEm
+        @Schema(description = "Início previsto") Instant dataHoraInicio,
+        @Schema(description = "Encerramento previsto") Instant dataHoraEncerramento,
+        @Schema(description = "Quando o evento foi iniciado de fato", nullable = true) Instant iniciadoEm,
+        @Schema(description = "Encerramento vigente. Limpo ao reabrir", nullable = true) Instant encerradoEm
 ) {
 
     public static EventoResponse de(Evento e) {

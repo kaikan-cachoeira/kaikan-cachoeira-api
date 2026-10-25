@@ -3,6 +3,7 @@ package com.kaikancachoeira.api.evento.dto;
 import com.kaikancachoeira.api.common.storage.ArmazenamentoService;
 import com.kaikancachoeira.api.evento.entity.ProdutoEvento;
 import com.kaikancachoeira.api.evento.enums.OrigemProdutoEvento;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -10,19 +11,20 @@ import java.time.Instant;
 public record ProdutoEventoResponse(
         Long id,
         OrigemProdutoEvento origem,
-        Long produtoId,
-        String nome,
-        String descricao,
-        String categoria,
-        String fotoUrl,
-        BigDecimal precoVenda,
-        BigDecimal desconto,
-        Instant descontoAplicadoEm,
-        BigDecimal precoComDesconto,
-        Integer quantidadePrevista,
-        Integer quantidadeVendida,
+        @Schema(description = "Nulo em itens PRODUZIDO", nullable = true) Long produtoId,
+        @Schema(description = "Snapshot do nome") String nome,
+        @Schema(description = "Snapshot da descrição", nullable = true) String descricao,
+        @Schema(description = "Snapshot do nome da categoria", example = "COMIDA", nullable = true) String categoria,
+        @Schema(nullable = true) String fotoUrl,
+        @Schema(description = "Preço de venda, sem desconto") BigDecimal precoVenda,
+        @Schema(description = "Desconto por unidade. 0 quando não há desconto") BigDecimal desconto,
+        @Schema(nullable = true) Instant descontoAplicadoEm,
+        @Schema(description = "precoVenda - desconto") BigDecimal precoComDesconto,
+        @Schema(description = "Nulo em itens PRODUZIDO", nullable = true) Integer quantidadePrevista,
+        @Schema(description = "Soma das vendas não canceladas") Integer quantidadeVendida,
+        @Schema(description = "quantidadePrevista - quantidadeVendida, sem piso em 0 (pode ficar negativo). Nulo em PRODUZIDO", nullable = true)
         Integer restantePrevisto,
-        BigDecimal custoTotalIngredientes,
+        @Schema(description = "Só em itens PRODUZIDO", nullable = true) BigDecimal custoTotalIngredientes,
         Instant criadoEm,
         Instant atualizadoEm
 ) {

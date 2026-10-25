@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/eventos/{eventoId}/produtos/{produtoEventoId}/desconto")
 @PreAuthorize("hasAuthority('VENDAS_MENU')")
-public class DescontoController {
+public class DescontoController implements DescontoApi {
 
     private final DescontoService service;
 

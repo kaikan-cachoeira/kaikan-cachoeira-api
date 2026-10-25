@@ -1,4 +1,3 @@
-
 package com.kaikancachoeira.api.estoque.controller;
 
 import com.kaikancachoeira.api.common.dto.PaginaResponse;
@@ -9,6 +8,7 @@ import com.kaikancachoeira.api.estoque.dto.MovimentarEstoqueRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -43,9 +43,24 @@ public interface MovimentacaoApi {
                             mediaType = "application/json",
                             schema = @Schema(
                                     implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class
-                            )
+                            ),
+                            examples = @ExampleObject(name = "Requisição inválida", value = """
+                                    {"codigo": "REQUISICAO_INVALIDA","mensagem": "Corpo da requisição inválido ou malformado","campos": []}
+                                    """)
                     )
-            )
+            ),
+            @ApiResponse(responseCode = "404", description = "Produto ou evento relacionado não encontrado",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class),
+                            examples = @ExampleObject(name = "Recurso não encontrado", value = """
+                                    {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Produto não encontrado: 123","campos": []}
+                                    """))),
+            @ApiResponse(responseCode = "409", description = "Saldo insuficiente para a movimentação",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class),
+                            examples = @ExampleObject(name = "Saldo insuficiente", value = """
+                                    {"codigo": "SALDO_INSUFICIENTE","mensagem": "Saldo insuficiente. Disponível: 0.","campos": []}
+                                    """)))
     })
     ResponseEntity<MovimentacaoResultadoResponse> movimentar(
             @Parameter(description = "ID do produto", required = true)
@@ -66,7 +81,21 @@ public interface MovimentacaoApi {
             A paginação usa índice iniciado em zero.
             """
     )
-    @ApiResponse(responseCode = "200", description = "Histórico retornado")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Histórico retornado"),
+            @ApiResponse(responseCode = "400", description = "Parâmetros de consulta ou paginação inválidos",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class),
+                            examples = @ExampleObject(name = "Parâmetro inválido", value = """
+                                    {"codigo": "VALIDACAO","mensagem": "Dados inválidos","campos": [{"campo": "page","mensagem": "deve ser maior ou igual a 0"}]}
+                                    """))),
+            @ApiResponse(responseCode = "404", description = "Produto não encontrado",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class),
+                            examples = @ExampleObject(name = "Recurso não encontrado", value = """
+                                    {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Produto não encontrado: 123","campos": []}
+                                    """)))
+    })
     ResponseEntity<PaginaResponse<MovimentacaoResponse>> historicoDoProduto(
             @Parameter(description = "ID do produto", required = true)
             @PathVariable Long id,
@@ -94,7 +123,15 @@ public interface MovimentacaoApi {
             summary = "Lista lotes de estoque de um produto",
             description = "Retorna os lotes de estoque associados ao produto indicado."
     )
-    @ApiResponse(responseCode = "200", description = "Lotes retornados")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Lotes retornados"),
+            @ApiResponse(responseCode = "404", description = "Produto não encontrado",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class),
+                            examples = @ExampleObject(name = "Recurso não encontrado", value = """
+                                    {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Produto não encontrado: 123","campos": []}
+                                    """)))
+    })
     ResponseEntity<List<EstoqueResponse>> listarLotes(
             @Parameter(description = "ID do produto", required = true)
             @PathVariable Long id
@@ -107,7 +144,21 @@ public interface MovimentacaoApi {
             A paginação usa índice iniciado em zero.
             """
     )
-    @ApiResponse(responseCode = "200", description = "Histórico do lote retornado")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Histórico do lote retornado"),
+            @ApiResponse(responseCode = "400", description = "Parâmetros de consulta ou paginação inválidos",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class),
+                            examples = @ExampleObject(name = "Parâmetro inválido", value = """
+                                    {"codigo": "VALIDACAO","mensagem": "Dados inválidos","campos": [{"campo": "page","mensagem": "deve ser maior ou igual a 0"}]}
+                                    """))),
+            @ApiResponse(responseCode = "404", description = "Lote não encontrado",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class),
+                            examples = @ExampleObject(name = "Recurso não encontrado", value = """
+                                    {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Lote não encontrado: 123","campos": []}
+                                    """)))
+    })
     ResponseEntity<PaginaResponse<MovimentacaoResponse>> historicoDoLote(
             @Parameter(description = "ID do lote de estoque", required = true)
             @PathVariable Long id,

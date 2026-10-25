@@ -54,7 +54,9 @@ public interface AuthApi {
             @ApiResponse(responseCode = "200", description = "Novo par de tokens emitido"),
             @ApiResponse(responseCode = "401", description = "Refresh token inválido, revogado ou expirado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ErroResponse.class)))
+                            schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Refresh token inválido", value = """
+                        {"codigo": "TOKEN_INVALIDO","mensagem": "Refresh token inválido, revogado ou expirado","campos": []}
+                        """)))
     })
     ResponseEntity<RefreshTokenResponse> refresh(RefreshTokenRequest request);
 
@@ -76,7 +78,15 @@ public interface AuthApi {
             - Tokens anteriores ainda não usados do mesmo usuário são invalidados.
             - Este fluxo também define a primeira senha de contas `PENDENTE`.
             """)
-    @ApiResponse(responseCode = "202", description = "Requisição aceita (independe de o e-mail existir)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "202", description = "Requisição aceita (independe de o e-mail existir)"),
+            @ApiResponse(responseCode = "400", description = "Formato de e-mail inválido",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErroResponse.class),
+                            examples = @ExampleObject(name = "Dados inválidos", value = """
+                                    {"codigo": "VALIDACAO","mensagem": "Dados inválidos","campos": [{"campo": "email","mensagem": "deve ser um endereço de e-mail bem formado"}]}
+                                    """)))
+    })
     ResponseEntity<Void> recuperarSenha(RecuperacaoSenhaRequest request);
 
     @Operation(

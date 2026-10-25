@@ -1,7 +1,7 @@
-
 package com.kaikancachoeira.api.evento.controller;
 
 import com.kaikancachoeira.api.common.exception.ErroResponse;
+import com.kaikancachoeira.api.evento.dto.AlteracaoStatusEventoRequest;
 import com.kaikancachoeira.api.evento.dto.EventoDetalheResponse;
 import com.kaikancachoeira.api.evento.dto.EventoRequest;
 import com.kaikancachoeira.api.evento.dto.EventoResponse;
@@ -9,6 +9,7 @@ import com.kaikancachoeira.api.evento.enums.TipoEvento;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -107,7 +108,9 @@ public interface EventoApi {
                     description = "Dados inválidos",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = ErroResponse.class)
+                            schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Dados inválidos", value = """
+                        {"codigo": "VALIDACAO","mensagem": "Dados inválidos","campos": [{"campo": "periodoValido","mensagem": "A data de encerramento deve ser posterior à data de início"}]}
+                        """)
                     )
             ),
             @ApiResponse(
@@ -115,7 +118,9 @@ public interface EventoApi {
                     description = "Conflito com as regras de integridade dos eventos",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = ErroResponse.class)
+                            schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Conflito de negócio", value = """
+                        {"codigo": "CONFLITO_DADOS","mensagem": "A operação viola uma regra de integridade dos dados.","campos": []}
+                        """)
                     )
             )
     })
@@ -145,7 +150,9 @@ public interface EventoApi {
                     description = "Dados inválidos",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = ErroResponse.class)
+                            schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Dados inválidos", value = """
+                        {"codigo": "VALIDACAO","mensagem": "Dados inválidos","campos": [{"campo": "periodoValido","mensagem": "A data de encerramento deve ser posterior à data de início"}]}
+                        """)
                     )
             ),
             @ApiResponse(
@@ -157,7 +164,9 @@ public interface EventoApi {
                     description = "Conflito com as regras de integridade dos eventos",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = ErroResponse.class)
+                            schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Conflito de negócio", value = """
+                        {"codigo": "CONFLITO_DADOS","mensagem": "A operação viola uma regra de integridade dos dados.","campos": []}
+                        """)
                     )
             )
     })
@@ -195,7 +204,9 @@ public interface EventoApi {
                     description = "Evento não pode ser excluído devido ao status ou a registros associados",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = ErroResponse.class)
+                            schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Conflito de negócio", value = """
+                        {"codigo": "CONFLITO_DADOS","mensagem": "A operação viola uma regra de integridade dos dados.","campos": []}
+                        """)
                     )
             )
     })
@@ -203,5 +214,31 @@ public interface EventoApi {
             @Parameter(description = "ID do evento", required = true)
             @PathVariable Long id
     );
+
+    @Operation(summary = "Altera o status do evento", description = """
+    Transições: NAO_INICIADO → EM_ANDAMENTO (preenche iniciadoEm); EM_ANDAMENTO → ENCERRADO (preenche encerradoEm e
+    grava os custos informados na mesma transação); EM_ANDAMENTO → NAO_INICIADO (desfazer início, só sem vendas
+    nem lançamentos de caixa); ENCERRADO → EM_ANDAMENTO (reabertura; preserva dados e iniciadoEm).
+    Só um evento do tipo EVENTO pode estar em andamento por vez. O campo custos só é aceito ao encerrar.
+    """)
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Status alterado"),
+            @ApiResponse(responseCode = "400", description = "Status inválido, custos fora do encerramento ou custo inválido",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Requisição inválida", value = """
+                        {"codigo": "REQUISICAO_INVALIDA","mensagem": "Corpo da requisição inválido ou malformado","campos": []}
+                        """))),
+            @ApiResponse(responseCode = "404", description = "Evento não encontrado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Recurso não encontrado", value = """
+                        {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Evento não encontrado: 123","campos": []}
+                        """))),
+            @ApiResponse(responseCode = "409", description = "Transição inválida, outro evento em andamento ou desfazer início bloqueado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Conflito de negócio", value = """
+                        {"codigo": "EVENTO_EM_ANDAMENTO_EXISTENTE","mensagem": "Já existe um evento em andamento.","campos": []}
+                        """)))
+    })
+    ResponseEntity<Void> alterarStatus(
+            @Parameter(description = "ID do evento", required = true) @PathVariable Long id,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Id do novo status e custos adicionais (opcional)", required = true)
+            @RequestBody @Valid AlteracaoStatusEventoRequest request);
 
 }
