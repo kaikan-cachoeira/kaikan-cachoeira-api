@@ -24,6 +24,8 @@ tags:
   description: "Consulta e gerenciamento de produtos do estoque, incluindo fotos."
 - name: Categorias
   description: Consulta e gerenciamento das categorias de produtos.
+- name: Custos do evento
+  description: Consulta e gerenciamento dos custos de um evento.
 - name: Movimentações de estoque
   description: Registro de movimentações e consulta de lotes e históricos do estoque.
 - name: Vendas
@@ -489,6 +491,133 @@ paths:
                   value:
                     codigo: EVENTO_JA_INICIADO
                     mensagem: Só é possível alterar com o evento no status NAO_INICIADO.
+                    campos: []
+  /eventos/{eventoId}/custos/{custoId}:
+    put:
+      tags:
+      - Custos do evento
+      summary: Atualiza custo do evento
+      description: Atualiza um custo adicional de um evento em andamento ou encerrado.
+      operationId: atualizarCustoEvento
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: custoId
+        in: path
+        description: ID do custo
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        description: Novos dados do custo
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustoEventoRequest"
+        required: true
+      responses:
+        "200":
+          description: Custo atualizado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CustoEventoResponse"
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Dados inválidos:
+                  description: Dados inválidos
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: valor
+                      mensagem: O valor deve ser maior que zero
+        "404":
+          description: Evento ou custo não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Evento não encontrado:
+                  description: Evento não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Evento não encontrado: 123"
+                    campos: []
+                Custo não encontrado:
+                  description: Custo não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Custo do evento não encontrado: 456"
+                    campos: []
+        "409":
+          description: Status do evento não permite atualizar custos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Status inválido:
+                  description: Status inválido
+                  value:
+                    codigo: CUSTO_EVENTO_STATUS_INVALIDO
+                    mensagem: Só é possível adicionar ou atualizar custos de eventos
+                      em andamento ou encerrados.
+                    campos: []
+    delete:
+      tags:
+      - Custos do evento
+      summary: Remove custo do evento
+      description: Remove um custo adicional do evento informado.
+      operationId: removerCustoEvento
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: custoId
+        in: path
+        description: ID do custo
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "204":
+          description: Custo removido
+        "404":
+          description: Evento ou custo não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Evento não encontrado:
+                  description: Evento não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Evento não encontrado: 123"
+                    campos: []
+                Custo não encontrado:
+                  description: Custo não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Custo do evento não encontrado: 456"
                     campos: []
   /doacoes/{id}:
     put:
@@ -1460,6 +1589,113 @@ paths:
                   value:
                     codigo: RECURSO_NAO_ENCONTRADO
                     mensagem: "Evento não encontrado: 123"
+                    campos: []
+  /eventos/{eventoId}/custos:
+    get:
+      tags:
+      - Custos do evento
+      summary: Lista custos do evento
+      description: Retorna os custos cadastrados para o evento informado.
+      operationId: listarCustosEvento
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: Custos retornados
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CustoEventoResponse"
+        "404":
+          description: Evento não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Evento não encontrado:
+                  description: Evento não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Evento não encontrado: 123"
+                    campos: []
+    post:
+      tags:
+      - Custos do evento
+      summary: Adiciona custo ao evento
+      description: Cadastra um custo adicional em um evento em andamento ou encerrado.
+      operationId: adicionarCustoEvento
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        description: Dados do custo adicional
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustoEventoRequest"
+        required: true
+      responses:
+        "201":
+          description: Custo criado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CustoEventoResponse"
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Dados inválidos:
+                  description: Dados inválidos
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: valor
+                      mensagem: O valor deve ser maior que zero
+        "404":
+          description: Evento não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Evento não encontrado:
+                  description: Evento não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Evento não encontrado: 123"
+                    campos: []
+        "409":
+          description: Status do evento não permite adicionar custos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Status inválido:
+                  description: Status inválido
+                  value:
+                    codigo: CUSTO_EVENTO_STATUS_INVALIDO
+                    mensagem: Só é possível adicionar ou atualizar custos de eventos
+                      em andamento ou encerrados.
                     campos: []
   /eventos/{eventoId}/caixa:
     get:
@@ -2815,6 +3051,47 @@ components:
         atualizadoEm:
           type: string
           format: date-time
+    CustoEventoRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          description: Nome do custo
+          example: Limpeza
+          maxLength: 150
+          minLength: 1
+        descricao:
+          type: string
+          description: Descrição (opcional)
+          example: Faxineira contratada
+          maxLength: 255
+          minLength: 0
+        valor:
+          type: number
+          description: "Valor, maior que zero"
+          example: 120.0
+          minimum: 0
+      required:
+      - nome
+      - valor
+    CustoEventoResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        nome:
+          type: string
+        descricao:
+          type: string
+        valor:
+          type: number
+        criadoEm:
+          type: string
+          format: date-time
+        atualizadoEm:
+          type: string
+          format: date-time
     DoacaoRequest:
       type: object
       properties:
@@ -3395,29 +3672,6 @@ components:
             $ref: "#/components/schemas/CustoEventoRequest"
       required:
       - status
-    CustoEventoRequest:
-      type: object
-      properties:
-        nome:
-          type: string
-          description: Nome do custo
-          example: Limpeza
-          maxLength: 150
-          minLength: 0
-        descricao:
-          type: string
-          description: Descrição (opcional)
-          example: Faxineira contratada
-          maxLength: 255
-          minLength: 0
-        valor:
-          type: number
-          description: "Valor, maior que 0"
-          example: 120.0
-          minimum: 0
-      required:
-      - nome
-      - valor
     DescontoRequest:
       type: object
       properties:
