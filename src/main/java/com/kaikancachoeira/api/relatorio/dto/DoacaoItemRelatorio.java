@@ -1,15 +1,15 @@
 package com.kaikancachoeira.api.relatorio.dto;
 
 import com.kaikancachoeira.api.doacao.enums.TipoDoacao;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 
 public record DoacaoItemRelatorio(
         TipoDoacao tipo,
-        Long produtoId,
+        @Schema(nullable = true) Long produtoId,
         String nome,
-        Integer quantidade,
+        @Schema(nullable = true) Integer quantidade,
         String doador,
-        BigDecimal valorFicha
-) {
-}
+        @Schema(nullable = true) BigDecimal valorFicha
+) {}

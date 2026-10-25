@@ -2,19 +2,20 @@ package com.kaikancachoeira.api.evento.dto;
 
 import com.kaikancachoeira.api.evento.entity.Evento;
 import com.kaikancachoeira.api.evento.enums.TipoEvento;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
 
 public record EventoDetalheResponse(
         Long id,
         String nome,
-        String observacoes,
+        @Schema(nullable = true) String observacoes,
         TipoEvento tipoEvento,
         StatusResumo status,
         Instant dataHoraInicio,
         Instant dataHoraEncerramento,
-        Instant iniciadoEm,
-        Instant encerradoEm,
+        @Schema(nullable = true) Instant iniciadoEm,
+        @Schema(nullable = true) Instant encerradoEm,
         ResumoEvento resumo
 ) {
 

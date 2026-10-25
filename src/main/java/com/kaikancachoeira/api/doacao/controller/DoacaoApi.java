@@ -7,6 +7,7 @@ import com.kaikancachoeira.api.doacao.dto.DoacaoResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -43,7 +44,9 @@ public interface DoacaoApi {
                     description = "Parâmetros inválidos",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = ErroResponse.class)
+                            schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Parâmetro inválido", value = """
+                        {"codigo": "REQUISICAO_INVALIDA","mensagem": "Valor inválido para o parâmetro","campos": [{"campo": "page","mensagem": "Valor inválido"}]}
+                        """)
                     )
             )
     })
@@ -79,7 +82,9 @@ public interface DoacaoApi {
                     description = "Dados inválidos",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = ErroResponse.class)
+                            schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Dados inválidos", value = """
+                        {"codigo": "VALIDACAO","mensagem": "Dados inválidos","campos": [{"campo": "tipo","mensagem": "Tipo de doação inválido"}]}
+                        """)
                     )
             ),
             @ApiResponse(
@@ -87,7 +92,9 @@ public interface DoacaoApi {
                     description = "Evento encerrado",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = ErroResponse.class)
+                            schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Conflito de negócio", value = """
+                        {"codigo": "EVENTO_ENCERRADO","mensagem": "O evento está encerrado.","campos": []}
+                        """)
                     )
             )
     })
@@ -114,7 +121,9 @@ public interface DoacaoApi {
                     description = "Dados inválidos",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = ErroResponse.class)
+                            schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Dados inválidos", value = """
+                        {"codigo": "VALIDACAO","mensagem": "Dados inválidos","campos": [{"campo": "tipo","mensagem": "Tipo de doação inválido"}]}
+                        """)
                     )
             ),
             @ApiResponse(
@@ -122,7 +131,9 @@ public interface DoacaoApi {
                     description = "Doação não encontrada",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = ErroResponse.class)
+                            schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Recurso não encontrado", value = """
+                        {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Doação não encontrado: 123","campos": []}
+                        """)
                     )
             ),
             @ApiResponse(
@@ -130,7 +141,9 @@ public interface DoacaoApi {
                     description = "Quantidade menor que a já consumida do lote",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = ErroResponse.class)
+                            schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Conflito de negócio", value = """
+                        {"codigo": "CONFLITO_DADOS","mensagem": "A operação viola uma regra de integridade dos dados.","campos": []}
+                        """)
                     )
             )
     })

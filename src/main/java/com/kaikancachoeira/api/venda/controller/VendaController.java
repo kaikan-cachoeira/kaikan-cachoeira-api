@@ -17,7 +17,7 @@ import java.time.Instant;
 
 @RestController
 @RequestMapping("/eventos/{eventoId}/vendas")
-public class VendaController {
+public class VendaController implements VendaApi {
 
     private final VendaService service;
 

@@ -10,6 +10,11 @@ servers:
 security:
 - bearerAuth: []
 tags:
+- name: Doações
+  description: "Registro, edição e consulta das doações recebidas pela associação."
+- name: Cardápio do evento
+  description: "Produtos do cardápio de um evento: itens do estoque e itens produzidos\
+    \ no evento."
 - name: Eventos
   description: "Consulta, cadastro e atualização de eventos."
 - name: Autenticação
@@ -21,12 +26,19 @@ tags:
   description: Consulta e gerenciamento das categorias de produtos.
 - name: Movimentações de estoque
   description: Registro de movimentações e consulta de lotes e históricos do estoque.
-- name: Tipos de movimentação
-  description: Consulta dos tipos de movimentação de estoque disponíveis.
-- name: Doações
-  description: "Registro, edição e consulta das doações recebidas pela associação."
+- name: Vendas
+  description: "Registro, cancelamento e histórico de vendas do evento em andamento."
+- name: Descontos
+  description: Desconto por unidade aplicado a produtos do cardápio durante o evento.
 - name: Relatórios
   description: "Relatório individual por evento com vendas, custos, doações e lucro."
+- name: Fiados
+  description: Consulta e quitação de fichas vendidas a prazo.
+- name: Caixa
+  description: "Lançamentos de venda e devolução de fichas, formas de pagamento e\
+    \ resumo do caixa do evento."
+- name: Tipos de movimentação
+  description: Consulta dos tipos de movimentação de estoque disponíveis.
 paths:
   /produtos/{id}:
     get:
@@ -52,6 +64,17 @@ paths:
                 $ref: "#/components/schemas/ProdutoResponse"
         "404":
           description: Produto não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Produto não encontrado: 123"
+                    campos: []
     put:
       tags:
       - Produtos
@@ -82,6 +105,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Dados inválidos:
+                  description: Dados inválidos
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: nome
+                      mensagem: Nome é obrigatório
+        "404":
+          description: Produto não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Produto não encontrado: 123"
+                    campos: []
     delete:
       tags:
       - Produtos
@@ -101,6 +146,17 @@ paths:
           description: Produto excluído
         "404":
           description: Produto não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Produto não encontrado: 123"
+                    campos: []
   /eventos/{id}:
     get:
       tags:
@@ -169,6 +225,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Dados inválidos:
+                  description: Dados inválidos
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: periodoValido
+                      mensagem: A data de encerramento deve ser posterior à data de
+                        início
         "404":
           description: Evento não encontrado
           content:
@@ -181,13 +247,325 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito de negócio:
+                  description: Conflito de negócio
+                  value:
+                    codigo: CONFLITO_DADOS
+                    mensagem: A operação viola uma regra de integridade dos dados.
+                    campos: []
+    delete:
+      tags:
+      - Eventos
+      summary: Exclui evento
+      description: |
+        Exclui um evento que ainda não foi iniciado e que não possui
+        vendas, doações ou movimentações de estoque.
+        Os produtos do evento e os custos adicionais são removidos
+        explicitamente na mesma transação.
+      operationId: excluir_1
+      parameters:
+      - name: id
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "204":
+          description: Evento excluído
+        "404":
+          description: Evento não encontrado
+        "409":
+          description: Evento não pode ser excluído devido ao status ou a registros
+            associados
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito de negócio:
+                  description: Conflito de negócio
+                  value:
+                    codigo: CONFLITO_DADOS
+                    mensagem: A operação viola uma regra de integridade dos dados.
+                    campos: []
+    patch:
+      tags:
+      - Eventos
+      summary: Altera o status do evento
+      description: |
+        Transições: NAO_INICIADO → EM_ANDAMENTO (preenche iniciadoEm); EM_ANDAMENTO → ENCERRADO (preenche encerradoEm e
+        grava os custos informados na mesma transação); EM_ANDAMENTO → NAO_INICIADO (desfazer início, só sem vendas
+        nem lançamentos de caixa); ENCERRADO → EM_ANDAMENTO (reabertura; preserva dados e iniciadoEm).
+        Só um evento do tipo EVENTO pode estar em andamento por vez. O campo custos só é aceito ao encerrar.
+      operationId: alterarStatus
+      parameters:
+      - name: id
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        description: Id do novo status e custos adicionais (opcional)
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlteracaoStatusEventoRequest"
+        required: true
+      responses:
+        "204":
+          description: Status alterado
+        "400":
+          description: "Status inválido, custos fora do encerramento ou custo invá\
+            lido"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Requisição inválida:
+                  description: Requisição inválida
+                  value:
+                    codigo: REQUISICAO_INVALIDA
+                    mensagem: Corpo da requisição inválido ou malformado
+                    campos: []
+        "404":
+          description: Evento não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Evento não encontrado: 123"
+                    campos: []
+        "409":
+          description: "Transição inválida, outro evento em andamento ou desfazer\
+            \ início bloqueado"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito de negócio:
+                  description: Conflito de negócio
+                  value:
+                    codigo: EVENTO_EM_ANDAMENTO_EXISTENTE
+                    mensagem: Já existe um evento em andamento.
+                    campos: []
+  /eventos/{eventoId}/produtos/{produtoEventoId}:
+    put:
+      tags:
+      - Cardápio do evento
+      summary: Atualiza item do cardápio
+      description: |
+        Só com o evento NAO_INICIADO. Itens ESTOQUE editam precoVenda e quantidadePrevista; itens PRODUZIDO
+        editam nome, descrição, categoria, precoVenda e custoTotalIngredientes. Exige EVENTOS_MENU.
+      operationId: atualizar_2
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: produtoEventoId
+        in: path
+        description: ID do item do cardápio
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        description: Novos dados do item
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProdutoEventoRequest"
+        required: true
+      responses:
+        "200":
+          description: Item atualizado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProdutoEventoResponse"
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Dados inválidos:
+                  description: Dados inválidos
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: origem
+                      mensagem: Origem deve ser ESTOQUE ou PRODUZIDO
+        "404":
+          description: Item não encontrado neste evento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Evento não encontrado: 123"
+                    campos: []
+        "409":
+          description: Evento já iniciado ou nome duplicado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito de negócio:
+                  description: Conflito de negócio
+                  value:
+                    codigo: EVENTO_JA_INICIADO
+                    mensagem: Só é possível alterar com o evento no status NAO_INICIADO.
+                    campos: []
+    delete:
+      tags:
+      - Cardápio do evento
+      summary: Remove item do cardápio
+      description: Só com o evento NAO_INICIADO e se o item nunca foi vendido. Exige
+        EVENTOS_MENU.
+      operationId: remover
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: produtoEventoId
+        in: path
+        description: ID do item do cardápio
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "204":
+          description: Item removido
+        "404":
+          description: Item não encontrado neste evento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Evento não encontrado: 123"
+                    campos: []
+        "409":
+          description: Evento já iniciado ou item já vendido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito de negócio:
+                  description: Conflito de negócio
+                  value:
+                    codigo: EVENTO_JA_INICIADO
+                    mensagem: Só é possível alterar com o evento no status NAO_INICIADO.
+                    campos: []
+  /doacoes/{id}:
+    put:
+      tags:
+      - Doações
+      summary: Atualiza doação
+      description: |
+        Atualiza os dados de uma doação em qualquer status do evento.
+        O tipo e o produto (no reabastecimento) não podem ser alterados.
+        Quando a quantidade de um reabastecimento muda, o lote e a movimentação DOACAO são ajustados.
+      operationId: atualizar_3
+      parameters:
+      - name: id
+        in: path
+        description: ID da doação
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        description: Dados da doação
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DoacaoRequest"
+        required: true
+      responses:
+        "204":
+          description: Doação atualizada
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Dados inválidos:
+                  description: Dados inválidos
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: tipo
+                      mensagem: Tipo de doação inválido
+        "404":
+          description: Doação não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Doação não encontrado: 123"
+                    campos: []
+        "409":
+          description: Quantidade menor que a já consumida do lote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito de negócio:
+                  description: Conflito de negócio
+                  value:
+                    codigo: CONFLITO_DADOS
+                    mensagem: A operação viola uma regra de integridade dos dados.
+                    campos: []
   /categorias/{id}:
     put:
       tags:
       - Categorias
       summary: Atualiza categoria
       description: Atualiza os dados de uma categoria existente.
-      operationId: atualizar_2
+      operationId: atualizar_4
       parameters:
       - name: id
         in: path
@@ -216,12 +594,47 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Dados inválidos:
+                  description: Dados inválidos
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: nome
+                      mensagem: Nome é obrigatório
+        "409":
+          description: Já existe uma categoria com este nome
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Categoria duplicada:
+                  description: Categoria duplicada
+                  value:
+                    codigo: CATEGORIA_DUPLICADA
+                    mensagem: Já existe uma categoria com este nome.
+                    campos: []
+        "404":
+          description: Categoria não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Categoria não encontrada: 123"
+                    campos: []
     delete:
       tags:
       - Categorias
       summary: Exclui categoria
       description: Solicita a exclusão da categoria indicada.
-      operationId: excluir_1
+      operationId: excluir_2
       parameters:
       - name: id
         in: path
@@ -233,6 +646,33 @@ paths:
       responses:
         "204":
           description: Categoria excluída
+        "404":
+          description: Categoria não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Categoria não encontrada: 123"
+                    campos: []
+        "409":
+          description: Categoria possui produtos vinculados
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Categoria em uso:
+                  description: Categoria em uso
+                  value:
+                    codigo: CATEGORIA_COM_PRODUTOS
+                    mensagem: Não é possível excluir esta categoria porque existem
+                      produtos vinculados a ela.
+                    campos: []
   /produtos:
     get:
       tags:
@@ -299,6 +739,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Dados inválidos:
+                  description: Dados inválidos
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: nome
+                      mensagem: Nome é obrigatório
   /produtos/{id}/movimentacoes:
     get:
       tags:
@@ -371,6 +820,34 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PaginaResponseMovimentacaoResponse"
+        "400":
+          description: Parâmetros de consulta ou paginação inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Parâmetro inválido:
+                  description: Parâmetro inválido
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: page
+                      mensagem: deve ser maior ou igual a 0
+        "404":
+          description: Produto não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Produto não encontrado: 123"
+                    campos: []
     post:
       tags:
       - Movimentações de estoque
@@ -406,6 +883,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Requisição inválida:
+                  description: Requisição inválida
+                  value:
+                    codigo: REQUISICAO_INVALIDA
+                    mensagem: Corpo da requisição inválido ou malformado
+                    campos: []
+        "404":
+          description: Produto ou evento relacionado não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Produto não encontrado: 123"
+                    campos: []
+        "409":
+          description: Saldo insuficiente para a movimentação
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Saldo insuficiente:
+                  description: Saldo insuficiente
+                  value:
+                    codigo: SALDO_INSUFICIENTE
+                    mensagem: "Saldo insuficiente. Disponível: 0."
+                    campos: []
   /produtos/{id}/foto:
     post:
       tags:
@@ -448,6 +958,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Produto não encontrado: 123"
+                    campos: []
   /eventos:
     get:
       tags:
@@ -542,19 +1059,677 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Dados inválidos:
+                  description: Dados inválidos
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: periodoValido
+                      mensagem: A data de encerramento deve ser posterior à data de
+                        início
         "409":
           description: Conflito com as regras de integridade dos eventos
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito de negócio:
+                  description: Conflito de negócio
+                  value:
+                    codigo: CONFLITO_DADOS
+                    mensagem: A operação viola uma regra de integridade dos dados.
+                    campos: []
+  /eventos/{eventoId}/vendas:
+    get:
+      tags:
+      - Vendas
+      summary: Lista histórico de vendas
+      description: |
+        Histórico paginado, da venda mais recente para a mais antiga. q pesquisa pelo nome do produto vendido.
+        Sem o filtro cancelada retorna todas; true só canceladas; false só ativas. Exige EVENTOS_MENU.
+      operationId: listarHistorico
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: q
+        in: query
+        description: Nome do produto
+        required: false
+        schema:
+          type: string
+      - name: dataHoraInicio
+        in: query
+        description: Início do intervalo (ISO-8601)
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: dataHoraFim
+        in: query
+        description: Fim do intervalo (ISO-8601)
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: cancelada
+        in: query
+        description: "Filtra por situação: true canceladas, false ativas, ausente\
+          \ todas"
+        required: false
+        schema:
+          type: boolean
+      - name: page
+        in: query
+        description: "Índice da página, começando em zero"
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        description: Registros por página (1 a 100)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        "200":
+          description: Histórico retornado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PaginaResponseVendaHistoricoResponse"
+        "400":
+          description: Paginação inválida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Parâmetro inválido:
+                  description: Parâmetro inválido
+                  value:
+                    codigo: REQUISICAO_INVALIDA
+                    mensagem: Valor inválido para o parâmetro
+                    campos:
+                    - campo: page
+                      mensagem: Valor inválido
+        "404":
+          description: Evento não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Evento não encontrado: 123"
+                    campos: []
+    post:
+      tags:
+      - Vendas
+      summary: Registra venda
+      description: |
+        Registra uma venda no evento em andamento (somente tipo EVENTO).
+        O desconto por produto vem do cardápio; o desconto da venda inteira é calculado
+        a partir de valorFinal (total dos itens menos valorFinal).
+        Itens de origem ESTOQUE baixam o estoque em FIFO, uma movimentação por lote consumido.
+        Itens PRODUZIDO não movimentam estoque. Exige VENDAS_MENU.
+      operationId: registrar
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        description: Itens e valor final da venda
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VendaRequest"
+        required: true
+      responses:
+        "201":
+          description: Venda registrada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/VendaResponse"
+        "400":
+          description: "Dados inválidos (itens repetidos, produto de outro evento,\
+            \ valorFinal acima do total)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Dados inválidos:
+                  description: Dados inválidos
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: itens
+                      mensagem: Produto repetido na venda
+        "409":
+          description: Evento não está em andamento ou saldo de estoque insuficiente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito de negócio:
+                  description: Conflito de negócio
+                  value:
+                    codigo: SALDO_INSUFICIENTE
+                    mensagem: "Saldo insuficiente. Disponível: 2."
+                    campos: []
+  /eventos/{eventoId}/vendas/{vendaId}/cancelamento:
+    post:
+      tags:
+      - Vendas
+      summary: Cancela venda
+      description: |
+        Cancelamento definitivo. Gera movimentações ESTORNO_VENDA devolvendo a quantidade ao lote de origem.
+        A venda cancelada deixa de contar em relatórios. Não permitido com o evento ENCERRADO.
+        Exige VENDAS_MENU ou EVENTOS_MENU.
+      operationId: cancelar
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: vendaId
+        in: path
+        description: ID da venda
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "204":
+          description: Venda cancelada
+        "404":
+          description: Venda não encontrada neste evento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Venda não encontrado: 123"
+                    campos: []
+        "409":
+          description: Venda já cancelada ou evento encerrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito de negócio:
+                  description: Conflito de negócio
+                  value:
+                    codigo: EVENTO_ENCERRADO
+                    mensagem: O evento está encerrado.
+                    campos: []
+  /eventos/{eventoId}/produtos:
+    get:
+      tags:
+      - Cardápio do evento
+      summary: Lista cardápio do evento
+      description: |
+        Retorna os produtos do cardápio com quantidade vendida (vendas não canceladas) e restante previsto.
+        q pesquisa pelo nome; categoria filtra pelo nome guardado no snapshot e aceita repetição.
+        Exige EVENTOS_MENU ou CARDAPIO_EVENTO_LEITURA.
+      operationId: listar_2
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: q
+        in: query
+        description: Texto para pesquisa pelo nome
+        required: false
+        schema:
+          type: string
+      - name: categoria
+        in: query
+        description: Nomes de categoria (aceita repetição)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        "200":
+          description: Cardápio retornado
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProdutoEventoResponse"
+    post:
+      tags:
+      - Cardápio do evento
+      summary: Adiciona produto ao cardápio
+      description: |
+        Só com o evento NAO_INICIADO e que não seja REUNIAO. origem ESTOQUE exige produtoId, precoVenda e
+        quantidadePrevista (o snapshot vem do produto). origem PRODUZIDO exige nome, precoVenda e
+        custoTotalIngredientes, e não gera movimentação de estoque. Exige EVENTOS_MENU.
+      operationId: adicionar
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        description: Dados do item do cardápio
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProdutoEventoRequest"
+        required: true
+      responses:
+        "201":
+          description: Produto adicionado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProdutoEventoResponse"
+        "400":
+          description: Dados inválidos para a origem informada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Dados inválidos:
+                  description: Dados inválidos
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: origem
+                      mensagem: Origem deve ser ESTOQUE ou PRODUZIDO
+        "404":
+          description: Evento não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Evento não encontrado: 123"
+                    campos: []
+        "409":
+          description: "Evento já iniciado, reunião ou produto/nome duplicado no evento"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito de negócio:
+                  description: Conflito de negócio
+                  value:
+                    codigo: EVENTO_JA_INICIADO
+                    mensagem: Só é possível alterar com o evento no status NAO_INICIADO.
+                    campos: []
+  /eventos/{eventoId}/produtos/{produtoEventoId}/foto:
+    post:
+      tags:
+      - Cardápio do evento
+      summary: Envia foto do item do cardápio
+      description: "multipart/form-data com o campo arquivo (JPG, PNG ou WEBP). Exige\
+        \ EVENTOS_MENU."
+      operationId: atualizarFoto
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: produtoEventoId
+        in: path
+        description: ID do item do cardápio
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                arquivo:
+                  type: string
+                  format: binary
+                  description: Arquivo da foto
+              required:
+              - arquivo
+      responses:
+        "200":
+          description: Foto processada com sucesso
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/FotoEventoResponse"
+        "404":
+          description: Item não encontrado neste evento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Evento não encontrado: 123"
+                    campos: []
+  /eventos/{eventoId}/caixa:
+    get:
+      tags:
+      - Caixa
+      summary: Lista lançamentos do caixa
+      description: |
+        Retorna o resumo do caixa e o histórico paginado de lançamentos, do mais recente para o mais antigo.
+        O resumo considera todos os lançamentos do evento, independentemente dos filtros. Exige CAIXA_MENU.
+      operationId: listar_3
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: tipo
+        in: query
+        description: Tipo do lançamento
+        required: false
+        schema:
+          type: string
+          enum:
+          - VENDA_FICHA
+          - DEVOLUCAO_FICHA
+          - QUITACAO_FIADO
+      - name: formaPagamento
+        in: query
+        description: Forma de pagamento
+        required: false
+        schema:
+          type: string
+          enum:
+          - PIX
+          - DEBITO
+          - CREDITO
+          - DINHEIRO
+          - FIADO
+      - name: page
+        in: query
+        description: "Índice da página, começando em zero"
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        description: Registros por página (máximo 100)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        "200":
+          description: Caixa retornado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CaixaResponse"
+        "404":
+          description: Evento não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Evento não encontrado: 123"
+                    campos: []
+    post:
+      tags:
+      - Caixa
+      summary: Registra lançamento no caixa
+      description: |
+        Registra VENDA_FICHA ou DEVOLUCAO_FICHA no evento em andamento. FIADO só é aceito em venda de fichas
+        e exige nomeDevedor: cria o fiado vinculado ao lançamento. O tipo QUITACAO_FIADO não é aceito aqui
+        (use a quitação de fiados). Retorna o lançamento e o resumo atualizado. Exige CAIXA_MENU.
+      operationId: registrar_1
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        description: Dados do lançamento
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaixaRequest"
+        required: true
+      responses:
+        "201":
+          description: Lançamento registrado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RegistroCaixaResponse"
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Dados inválidos:
+                  description: Dados inválidos
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: tipo
+                      mensagem: Tipo deve ser VENDA_FICHA ou DEVOLUCAO_FICHA
+        "409":
+          description: Evento não está em andamento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito de negócio:
+                  description: Conflito de negócio
+                  value:
+                    codigo: EVENTO_NAO_EM_ANDAMENTO
+                    mensagem: O evento não está em andamento.
+                    campos: []
+  /doacoes:
+    get:
+      tags:
+      - Doações
+      summary: Lista doações
+      description: |
+        Retorna as doações paginadas, da mais recente para a mais antiga.
+        Os filtros tipo e eventoId aceitam mais de um valor (parâmetro repetido) e se combinam.
+        O parâmetro q pesquisa pelo nome do doador ou pela descrição do item.
+        A paginação usa índice iniciado em zero.
+      operationId: listar_4
+      parameters:
+      - name: q
+        in: query
+        description: Texto para pesquisar por doador ou descrição do item
+        required: false
+        schema:
+          type: string
+      - name: tipo
+        in: query
+        description: "Tipos da doação: dinheiro, produto ou reabastecimento (aceita\
+          \ repetição)"
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      - name: eventoId
+        in: query
+        description: IDs dos eventos (aceita repetição)
+        required: false
+        schema:
+          type: array
+          items:
+            type: integer
+            format: int64
+      - name: page
+        in: query
+        description: "Índice da página, começando em zero"
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+          minimum: 0
+      - name: size
+        in: query
+        description: Quantidade de registros por página (de 1 a 100)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      responses:
+        "200":
+          description: Doações retornadas
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PaginaResponseDoacaoResponse"
+        "400":
+          description: Parâmetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Parâmetro inválido:
+                  description: Parâmetro inválido
+                  value:
+                    codigo: REQUISICAO_INVALIDA
+                    mensagem: Valor inválido para o parâmetro
+                    campos:
+                    - campo: page
+                      mensagem: Valor inválido
+    post:
+      tags:
+      - Doações
+      summary: Registra doação
+      description: |
+        Registra uma doação em dinheiro, de produto ou de reabastecimento.
+        Somente o reabastecimento altera o estoque: cria um lote sem custo e a movimentação DOACAO.
+        O evento deve existir e não pode estar encerrado.
+      operationId: criar_2
+      requestBody:
+        description: Dados da doação
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DoacaoRequest"
+        required: true
+      responses:
+        "201":
+          description: Doação registrada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DoacaoResponse"
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Dados inválidos:
+                  description: Dados inválidos
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: tipo
+                      mensagem: Tipo de doação inválido
+        "409":
+          description: Evento encerrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito de negócio:
+                  description: Conflito de negócio
+                  value:
+                    codigo: EVENTO_ENCERRADO
+                    mensagem: O evento está encerrado.
+                    campos: []
   /categorias:
     get:
       tags:
       - Categorias
       summary: Lista categorias
       description: Retorna as categorias disponíveis para classificação dos produtos.
-      operationId: listar_2
+      operationId: listar_5
       responses:
         "200":
           description: Lista de categorias retornada
@@ -569,7 +1744,7 @@ paths:
       - Categorias
       summary: Cadastra categoria
       description: Cria uma categoria a partir dos dados informados.
-      operationId: criar_2
+      operationId: criar_3
       requestBody:
         description: Dados para cadastro da categoria
         content:
@@ -590,6 +1765,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Dados inválidos:
+                  description: Dados inválidos
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: nome
+                      mensagem: Nome é obrigatório
+        "409":
+          description: Já existe uma categoria com este nome
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Categoria duplicada:
+                  description: Categoria duplicada
+                  value:
+                    codigo: CATEGORIA_DUPLICADA
+                    mensagem: Já existe uma categoria com este nome.
+                    campos: []
   /auth/refresh:
     post:
       tags:
@@ -622,6 +1819,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Refresh token inválido:
+                  description: Refresh token inválido
+                  value:
+                    codigo: TOKEN_INVALIDO
+                    mensagem: "Refresh token inválido, revogado ou expirado"
+                    campos: []
       security: []
   /auth/redefinicao-senha:
     post:
@@ -690,6 +1894,21 @@ paths:
       responses:
         "202":
           description: Requisição aceita (independe de o e-mail existir)
+        "400":
+          description: Formato de e-mail inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Dados inválidos:
+                  description: Dados inválidos
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: email
+                      mensagem: deve ser um endereço de e-mail bem formado
       security: []
   /auth/logout:
     post:
@@ -746,6 +1965,221 @@ paths:
                 mensagem: Usuário ou senha inválidos
                 campos: []
       security: []
+  /eventos/{eventoId}/produtos/{produtoEventoId}/desconto:
+    delete:
+      tags:
+      - Descontos
+      summary: Remove desconto de um produto
+      description: "Zera o desconto. Se não houver desconto aplicado, não altera nada.\
+        \ Exige VENDAS_MENU."
+      operationId: remover_1
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: produtoEventoId
+        in: path
+        description: ID do produto no cardápio do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: Desconto removido
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DescontoProdutoResponse"
+        "404":
+          description: Produto não pertence ao evento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Produto não encontrado: 123"
+                    campos: []
+        "409":
+          description: Evento não está em andamento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito de negócio:
+                  description: Conflito de negócio
+                  value:
+                    codigo: EVENTO_NAO_EM_ANDAMENTO
+                    mensagem: O evento não está em andamento.
+                    campos: []
+    patch:
+      tags:
+      - Descontos
+      summary: Aplica desconto a um produto
+      description: |
+        Define o novo preço do produto (menor ou igual ao preço de venda). O desconto por unidade
+        (precoVenda - novoPreco) vale apenas para vendas feitas depois; vendas anteriores não mudam.
+        Se novoPreco for igual ao preço de venda, nada é gravado. Exige VENDAS_MENU.
+      operationId: aplicar
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: produtoEventoId
+        in: path
+        description: ID do produto no cardápio do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        description: Novo preço do produto
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DescontoRequest"
+        required: true
+      responses:
+        "200":
+          description: Desconto aplicado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DescontoProdutoResponse"
+        "400":
+          description: Novo preço inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Preço inválido:
+                  description: Preço inválido
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: novoPreco
+                      mensagem: Novo preço não pode ser maior que o preço de venda
+        "404":
+          description: Produto não pertence ao evento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Produto não encontrado: 123"
+                    campos: []
+        "409":
+          description: Evento não está em andamento ou produto já tem desconto
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito de negócio:
+                  description: Conflito de negócio
+                  value:
+                    codigo: EVENTO_NAO_EM_ANDAMENTO
+                    mensagem: O evento não está em andamento.
+                    campos: []
+  /eventos/{eventoId}/fiados/{fiadoId}/quitacao:
+    patch:
+      tags:
+      - Fiados
+      summary: Quita fiado
+      description: |
+        Marca o fiado como quitado e gera um lançamento QUITACAO_FIADO na forma de pagamento informada
+        (PIX, DEBITO, CREDITO ou DINHEIRO; FIADO não é aceito). Permitido mesmo com o evento encerrado.
+        Exige CAIXA_MENU.
+      operationId: quitar
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: fiadoId
+        in: path
+        description: ID do fiado
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        description: Forma de pagamento da quitação
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuitacaoRequest"
+        required: true
+      responses:
+        "200":
+          description: Fiado quitado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/QuitacaoResponse"
+        "400":
+          description: Forma de pagamento inválida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Forma de pagamento inválida:
+                  description: Forma de pagamento inválida
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: formaPagamento
+                      mensagem: Forma de pagamento da quitação não pode ser FIADO
+        "404":
+          description: Fiado não encontrado neste evento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Fiado não encontrado: 123"
+                    campos: []
+        "409":
+          description: Fiado já quitado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito de negócio:
+                  description: Conflito de negócio
+                  value:
+                    codigo: FIADO_JA_QUITADO
+                    mensagem: O fiado já está quitado.
+                    campos: []
   /tipos-movimentacao:
     get:
       tags:
@@ -753,7 +2187,7 @@ paths:
       summary: Lista tipos de movimentação
       description: Retorna os tipos de movimentação cadastrados para uso nas operações
         de estoque.
-      operationId: listar_3
+      operationId: listar_6
       responses:
         "200":
           description: Lista de tipos de movimentação retornada
@@ -787,6 +2221,200 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/EstoqueResponse"
+        "404":
+          description: Produto não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Produto não encontrado: 123"
+                    campos: []
+  /eventos/{id}/relatorio:
+    get:
+      tags:
+      - Relatórios
+      summary: Consulta o relatório do evento
+      description: |
+        Retorna o relatório do evento. Evento encerrado gera o relatório final;
+        evento em andamento gera o relatório parcial (parcial = true);
+        evento não iniciado retorna 409.
+        Para eventos do tipo EVENTO retorna resumo financeiro, produtos, custos adicionais,
+        caixa, doações, movimentações de consumo e perda, ranking de produtos e vendas por hora.
+        Para reuniões retorna apenas os custos (compras, consumo interno e custos adicionais).
+        Vendas canceladas não entram em nenhum valor.
+      operationId: gerar
+      parameters:
+      - name: id
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: Relatório retornado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RelatorioResponse"
+        "404":
+          description: Evento não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Evento não encontrado: 123"
+                    campos: []
+        "409":
+          description: Evento não iniciado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito de negócio:
+                  description: Conflito de negócio
+                  value:
+                    codigo: EVENTO_NAO_INICIADO
+                    mensagem: Evento não iniciado.
+                    campos: []
+  /eventos/{eventoId}/vendas/{vendaId}:
+    get:
+      tags:
+      - Vendas
+      summary: Detalha venda
+      description: "Retorna os itens, descontos e situação de uma venda. Exige EVENTOS_MENU."
+      operationId: detalhar
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: vendaId
+        in: path
+        description: ID da venda
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: Venda encontrada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/VendaDetalheResponse"
+        "404":
+          description: Venda não encontrada neste evento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Venda não encontrado: 123"
+                    campos: []
+  /eventos/{eventoId}/produtos/categorias:
+    get:
+      tags:
+      - Cardápio do evento
+      summary: Lista categorias do cardápio
+      description: Retorna os nomes distintos das categorias do cardápio. Exige EVENTOS_MENU
+        ou CARDAPIO_EVENTO_LEITURA.
+      operationId: listarCategorias
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: Categorias retornadas
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  type: string
+  /eventos/{eventoId}/fiados:
+    get:
+      tags:
+      - Fiados
+      summary: Lista fiados do evento
+      description: "Retorna os fiados, do mais recente para o mais antigo. situacao:\
+        \ pendente ou quitado; ausente retorna todos. Exige CAIXA_MENU."
+      operationId: listar_7
+      parameters:
+      - name: eventoId
+        in: path
+        description: ID do evento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: situacao
+        in: query
+        description: pendente ou quitado
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Fiados retornados
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FiadoResponse"
+        "400":
+          description: Situação inválida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Situação inválida:
+                  description: Situação inválida
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: situacao
+                      mensagem: Situação deve ser pendente ou quitado
+        "404":
+          description: Evento não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Evento não encontrado: 123"
+                    campos: []
   /estoques/{id}/movimentacoes:
     get:
       tags:
@@ -830,196 +2458,92 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PaginaResponseMovimentacaoResponse"
-  /doacoes:
-    get:
-      tags:
-      - Doações
-      summary: Lista doações
-      description: |
-        Retorna as doações paginadas, da mais recente para a mais antiga.
-        Os filtros tipo e eventoId aceitam mais de um valor (parâmetro repetido) e se combinam.
-        O parâmetro q pesquisa pelo nome do doador ou pela descrição do item.
-        A paginação usa índice iniciado em zero.
-      operationId: listarDoacoes
-      parameters:
-      - name: q
-        in: query
-        description: Texto para pesquisar por doador ou descrição do item
-        required: false
-        schema:
-          type: string
-      - name: tipo
-        in: query
-        description: "Tipos da doação: dinheiro, produto ou reabastecimento (aceita\
-          \ repetição)"
-        required: false
-        schema:
-          type: array
-          items:
-            type: string
-      - name: eventoId
-        in: query
-        description: IDs dos eventos (aceita repetição)
-        required: false
-        schema:
-          type: array
-          items:
-            type: integer
-            format: int64
-      - name: page
-        in: query
-        description: "Índice da página, começando em zero"
-        required: false
-        schema:
-          type: integer
-          format: int32
-          default: 0
-          minimum: 0
-      - name: size
-        in: query
-        description: Quantidade de registros por página (de 1 a 100)
-        required: false
-        schema:
-          type: integer
-          format: int32
-          default: 20
-          maximum: 100
-          minimum: 1
-      responses:
-        "200":
-          description: Doações retornadas
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/PaginaResponseDoacaoResponse"
         "400":
-          description: Parâmetros inválidos
+          description: Parâmetros de consulta ou paginação inválidos
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
-    post:
-      tags:
-      - Doações
-      summary: Registra doação
-      description: |
-        Registra uma doação em dinheiro, de produto ou de reabastecimento.
-        Somente o reabastecimento altera o estoque: cria um lote sem custo e a movimentação DOACAO.
-        O evento deve existir e não pode estar encerrado.
-      operationId: registrarDoacao
-      requestBody:
-        description: Dados da doação
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DoacaoRequest"
-        required: true
-      responses:
-        "201":
-          description: Doação registrada
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/DoacaoResponse"
-        "400":
-          description: Dados inválidos
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErroResponse"
-        "409":
-          description: Evento encerrado
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErroResponse"
-  /doacoes/{id}:
-    put:
-      tags:
-      - Doações
-      summary: Atualiza doação
-      description: |
-        Atualiza os dados de uma doação em qualquer status do evento.
-        O tipo e o produto (no reabastecimento) não podem ser alterados.
-        Quando a quantidade de um reabastecimento muda, o lote e a movimentação DOACAO são ajustados.
-      operationId: atualizarDoacao
-      parameters:
-      - name: id
-        in: path
-        description: ID da doação
-        required: true
-        schema:
-          type: integer
-          format: int64
-      requestBody:
-        description: Dados da doação
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DoacaoRequest"
-        required: true
-      responses:
-        "204":
-          description: Doação atualizada
-        "400":
-          description: Dados inválidos
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Parâmetro inválido:
+                  description: Parâmetro inválido
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: page
+                      mensagem: deve ser maior ou igual a 0
         "404":
-          description: Doação não encontrada
+          description: Lote não encontrado
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
-        "409":
-          description: Quantidade menor que a já consumida do lote
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErroResponse"
-  /eventos/{id}/relatorio:
-    get:
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Lote não encontrado: 123"
+                    campos: []
+  /eventos/{eventoId}/caixa/{lancamentoId}:
+    delete:
       tags:
-      - Relatórios
-      summary: Consulta o relatório do evento
+      - Caixa
+      summary: Exclui lançamento
       description: |
-        Retorna o relatório do evento. Evento encerrado gera o relatório final;
-        evento em andamento gera o relatório parcial (parcial = true);
-        evento não iniciado retorna 409.
-        Para eventos do tipo EVENTO retorna resumo financeiro, produtos, custos adicionais,
-        caixa, doações, movimentações de consumo e perda, ranking de produtos e vendas por hora.
-        Para reuniões retorna apenas os custos (compras, consumo interno e custos adicionais).
-        Vendas canceladas não entram em nenhum valor.
-      operationId: gerarRelatorio
+        Corrige registros acidentais (exclusão física), apenas com o evento em andamento.
+        Excluir venda de fichas fiada remove o fiado (se pendente); excluir uma quitação reabre o fiado.
+        Exige CAIXA_MENU.
+      operationId: excluir_3
       parameters:
-      - name: id
+      - name: eventoId
         in: path
         description: ID do evento
         required: true
         schema:
           type: integer
           format: int64
+      - name: lancamentoId
+        in: path
+        description: ID do lançamento
+        required: true
+        schema:
+          type: integer
+          format: int64
       responses:
         "200":
-          description: Relatório retornado
+          description: Lançamento excluído; retorna o resumo atualizado
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/RelatorioResponse"
+                $ref: "#/components/schemas/ExclusaoCaixaResponse"
         "404":
-          description: Evento não encontrado
+          description: Lançamento não encontrado neste evento
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Recurso não encontrado:
+                  description: Recurso não encontrado
+                  value:
+                    codigo: RECURSO_NAO_ENCONTRADO
+                    mensagem: "Lançamento não encontrado: 123"
+                    campos: []
         "409":
-          description: Evento não iniciado
+          description: Evento não está em andamento ou fiado já quitado
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito de negócio:
+                  description: Conflito de negócio
+                  value:
+                    codigo: FIADO_JA_QUITADO
+                    mensagem: O fiado já está quitado.
+                    campos: []
 components:
   schemas:
     ProdutoRequest:
@@ -1027,35 +2551,55 @@ components:
       properties:
         nome:
           type: string
+          description: "Nome do produto. Único, sem diferenciar maiúsculas"
+          example: Coca-Cola 350ml
           maxLength: 150
           minLength: 0
         descricao:
           type: string
+          description: Descrição opcional
+          example: Lata 350ml
         categoriaId:
           type: integer
           format: int32
+          description: ID da categoria (opcional)
+          example: 1
         estoqueMinimo:
           type: integer
           format: int32
+          description: Quantidade mínima em estoque (opcional). Abaixo ou igual a
+            ela o produto aparece como estoque baixo
+          example: 10
           minimum: 0
       required:
       - nome
     CampoErro:
       type: object
+      description: Erro de validação em um campo
       properties:
         campo:
           type: string
+          description: Nome do campo
+          example: valor
         mensagem:
           type: string
+          description: Mensagem do erro
+          example: Valor deve ser maior que 0
     ErroResponse:
       type: object
+      description: Corpo padrão de erro
       properties:
         codigo:
           type: string
+          description: Código estável do erro
+          example: SALDO_INSUFICIENTE
         mensagem:
           type: string
+          description: Mensagem legível
+          example: "Saldo insuficiente. Disponível: 2."
         campos:
           type: array
+          description: Erros por campo (vazio quando não é validação)
           items:
             $ref: "#/components/schemas/CampoErro"
     EventoRequest:
@@ -1063,21 +2607,31 @@ components:
       properties:
         nome:
           type: string
+          description: Nome do evento. Espaços externos são removidos
+          example: Undoukai 2026
           maxLength: 150
           minLength: 0
         observacoes:
           type: string
+          description: Observações (opcional)
         tipoEvento:
           type: string
+          description: EVENTO (com cardápio e vendas) ou REUNIAO (só despesa)
           enum:
           - EVENTO
           - REUNIAO
+          example: EVENTO
         dataHoraInicio:
           type: string
           format: date-time
+          description: Início previsto (ISO-8601)
+          example: 2026-11-01T09:00:00Z
         dataHoraEncerramento:
           type: string
           format: date-time
+          description: "Encerramento previsto (ISO-8601). Deve ser posterior ao iní\
+            cio; se não for, o erro vem no campo periodoValido"
+          example: 2026-11-01T17:00:00Z
       required:
       - dataHoraEncerramento
       - dataHoraInicio
@@ -1101,34 +2655,240 @@ components:
         dataHoraInicio:
           type: string
           format: date-time
+          description: Início previsto
         dataHoraEncerramento:
           type: string
           format: date-time
+          description: Encerramento previsto
         iniciadoEm:
-          type: string
+          type:
+          - string
+          - "null"
           format: date-time
+          description: Quando o evento foi iniciado de fato
         encerradoEm:
-          type: string
+          type:
+          - string
+          - "null"
           format: date-time
+          description: Encerramento vigente. Limpo ao reabrir
     StatusResumo:
       type: object
       properties:
         id:
           type: integer
           format: int32
+          description: "1 = NAO_INICIADO, 2 = EM_ANDAMENTO, 3 = ENCERRADO"
+          example: 2
         codigo:
           type: string
+          example: EM_ANDAMENTO
         descricao:
           type: string
+          example: Evento em andamento
+    ProdutoEventoRequest:
+      type: object
+      properties:
+        origem:
+          type: string
+          description: "ESTOQUE (produto cadastrado) ou PRODUZIDO (feito no evento,\
+            \ sem estoque)"
+          enum:
+          - ESTOQUE
+          - PRODUZIDO
+        produtoId:
+          type: integer
+          format: int64
+          description: Obrigatório em ESTOQUE; não usado em PRODUZIDO
+          example: 3
+        nome:
+          type: string
+          description: "Obrigatório em PRODUZIDO, único no evento. Em ESTOQUE vem\
+            \ do produto"
+          example: Tempurá
+          maxLength: 150
+          minLength: 0
+        descricao:
+          type: string
+          description: Só em PRODUZIDO. Em ESTOQUE vem do produto
+        categoria:
+          type: string
+          description: "Só em PRODUZIDO, opcional. Deve ser o nome de uma categoria\
+            \ existente"
+          example: COMIDA
+          maxLength: 100
+          minLength: 0
+        precoVenda:
+          type: number
+          description: Preço de venda unitário
+          example: 10.0
+          minimum: 0
+        quantidadePrevista:
+          type: integer
+          format: int32
+          description: Obrigatório em ESTOQUE; não usado em PRODUZIDO
+          example: 20
+          minimum: 0
+        custoTotalIngredientes:
+          type: number
+          description: "Obrigatório em PRODUZIDO: custo total dos ingredientes no\
+            \ evento"
+          example: 40.0
+          minimum: 0
+      required:
+      - origem
+      - precoVenda
+    ProdutoEventoResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        origem:
+          type: string
+          enum:
+          - ESTOQUE
+          - PRODUZIDO
+        produtoId:
+          type:
+          - integer
+          - "null"
+          format: int64
+          description: Nulo em itens PRODUZIDO
+        nome:
+          type: string
+          description: Snapshot do nome
+        descricao:
+          type:
+          - string
+          - "null"
+          description: Snapshot da descrição
+        categoria:
+          type:
+          - string
+          - "null"
+          description: Snapshot do nome da categoria
+          example: COMIDA
+        fotoUrl:
+          type:
+          - string
+          - "null"
+        precoVenda:
+          type: number
+          description: "Preço de venda, sem desconto"
+        desconto:
+          type: number
+          description: Desconto por unidade. 0 quando não há desconto
+        descontoAplicadoEm:
+          type:
+          - string
+          - "null"
+          format: date-time
+        precoComDesconto:
+          type: number
+          description: precoVenda - desconto
+        quantidadePrevista:
+          type:
+          - integer
+          - "null"
+          format: int32
+          description: Nulo em itens PRODUZIDO
+        quantidadeVendida:
+          type: integer
+          format: int32
+          description: Soma das vendas não canceladas
+        restantePrevisto:
+          type:
+          - integer
+          - "null"
+          format: int32
+          description: "quantidadePrevista - quantidadeVendida, sem piso em 0 (pode\
+            \ ficar negativo). Nulo em PRODUZIDO"
+        custoTotalIngredientes:
+          type:
+          - number
+          - "null"
+          description: Só em itens PRODUZIDO
+        criadoEm:
+          type: string
+          format: date-time
+        atualizadoEm:
+          type: string
+          format: date-time
+    DoacaoRequest:
+      type: object
+      properties:
+        eventoId:
+          type: integer
+          format: int64
+          description: Evento da doação. Deve existir e não estar ENCERRADO
+          example: 1
+        tipo:
+          type: string
+          description: "Tipo, sem diferenciar maiúsculas. Imutável na edição"
+          enum:
+          - dinheiro
+          - produto
+          - reabastecimento
+          example: dinheiro
+          minLength: 1
+        valor:
+          type: number
+          description: "Só em dinheiro: valor maior que 0"
+          example: 50.0
+        formaPagamento:
+          type: string
+          description: "Só em dinheiro: PIX, DEBITO, CREDITO ou DINHEIRO"
+          example: PIX
+        produtoId:
+          type: integer
+          format: int64
+          description: "Só em reabastecimento: produto ativo do estoque. Imutável\
+            \ na edição"
+          example: 3
+        nome:
+          type: string
+          description: "Só em produto: descrição do item. Em reabastecimento é preenchido\
+            \ pelo nome do produto"
+          example: Bolo de cenoura
+          maxLength: 150
+          minLength: 0
+        quantidade:
+          type: integer
+          format: int32
+          description: "Só em reabastecimento: quantidade maior que 0. Cria lote sem\
+            \ custo"
+          example: 12
+        doador:
+          type: string
+          description: Nome do doador (texto livre)
+          example: Maria Silva
+          maxLength: 150
+          minLength: 0
+        valorFicha:
+          type: number
+          description: Valor da ficha de agradecimento (opcional). Entra como custo
+            do evento
+          example: 20.0
+          minimum: 0
+      required:
+      - doador
+      - eventoId
+      - tipo
     CategoriaRequest:
       type: object
       properties:
         nome:
           type: string
+          description: "Nome da categoria, único sem diferenciar maiúsculas. Espaç\
+            os externos são removidos"
+          example: BEBIDA
           maxLength: 100
           minLength: 0
         descricao:
           type: string
+          description: Descrição opcional
+          example: Todos os produtos classificados como bebida
           maxLength: 255
           minLength: 0
       required:
@@ -1139,56 +2899,89 @@ components:
         id:
           type: integer
           format: int32
+          example: 1
         nome:
           type: string
+          example: BEBIDA
         descricao:
-          type: string
+          type:
+          - string
+          - "null"
     CategoriaResumo:
       type: object
+      description: Categoria resumida do produto
       properties:
         id:
           type: integer
           format: int32
+          example: 1
         nome:
           type: string
+          example: BEBIDA
     ProdutoResponse:
       type: object
       properties:
         id:
           type: integer
           format: int64
+          example: 1
         nome:
           type: string
+          example: Coca-Cola 350ml
         descricao:
           type: string
         categoria:
+          type: "null"
           $ref: "#/components/schemas/CategoriaResumo"
         fotoUrl:
-          type: string
+          type:
+          - string
+          - "null"
+          description: "Caminho relativo da foto, servida em /arquivos/{chave}"
+          example: /arquivos/3f2a....png
         quantidadeAtual:
           type: integer
           format: int32
+          description: Soma dos saldos de todos os lotes
+          example: 24
         estoqueMinimo:
-          type: integer
+          type:
+          - integer
+          - "null"
           format: int32
+          example: 10
     MovimentarEstoqueRequest:
       type: object
       properties:
         tipoMovimentacaoId:
           type: integer
           format: int32
+          description: ID do tipo de movimentação manual (GET /tipos-movimentacao).
+            Tipos gerados pelo sistema são rejeitados
+          example: 1
         quantidade:
           type: integer
           format: int32
+          description: Quantidade sempre positiva; o sentido vem do tipo
+          example: 10
           minimum: 0
         custoTotal:
           type: number
+          description: Custo total pago. Obrigatório e maior que 0 quando o tipo exige
+            custo (REABASTECIMENTO); ignorado nos demais
+          example: 45.0
           minimum: 0
         eventoId:
-          type: integer
+          type:
+          - integer
+          - "null"
           format: int64
+          description: Evento relacionado. Obrigatório em CONSUMO_INTERNO e deve ser
+            do tipo REUNIAO
         observacoes:
           type: string
+          description: "Observações. Em PERDA, registra o motivo"
+          example: Latas amassadas
       required:
       - quantidade
       - tipoMovimentacaoId
@@ -1201,20 +2994,30 @@ components:
         estoqueId:
           type: integer
           format: int64
+          description: Lote afetado pela movimentação
         tipo:
           type: string
+          description: Código do tipo
+          example: REABASTECIMENTO
         quantidade:
           type: integer
           format: int32
+          description: "Positiva em entradas, negativa em saídas"
+          example: -3
         custoTotal:
           type: number
+          description: Custo do lote movimentado
         custoUnitario:
           type: number
         eventoId:
-          type: integer
+          type:
+          - integer
+          - "null"
           format: int64
         observacoes:
-          type: string
+          type:
+          - string
+          - "null"
         criadoEm:
           type: string
           format: date-time
@@ -1223,174 +3026,196 @@ components:
       properties:
         movimentacoes:
           type: array
+          description: "Uma movimentação por lote criado (entrada) ou consumido (saí\
+            da, FIFO)"
           items:
             $ref: "#/components/schemas/MovimentacaoResponse"
         quantidadeAtual:
           type: integer
           format: int32
+          description: Saldo do produto após a movimentação
     FotoResponse:
       type: object
       properties:
         url:
           type: string
-    RefreshTokenRequest:
+          description: URL relativa da foto salva
+          example: /arquivos/3f2a....png
+    ItemVendaRequest:
       type: object
       properties:
-        refreshToken:
-          type: string
-          minLength: 1
-      required:
-      - refreshToken
-    RefreshTokenResponse:
-      type: object
-      properties:
-        accessToken:
-          type: string
-        refreshToken:
-          type: string
-    RedefinicaoSenhaRequest:
-      type: object
-      properties:
-        token:
-          type: string
-          minLength: 1
-        novaSenha:
-          type: string
-          maxLength: 255
-          minLength: 8
-      required:
-      - novaSenha
-      - token
-    RecuperacaoSenhaRequest:
-      type: object
-      properties:
-        email:
-          type: string
-          format: email
-          maxLength: 255
-          minLength: 0
-      required:
-      - email
-    LogoutRequest:
-      type: object
-      properties:
-        refreshToken:
-          type: string
-          minLength: 1
-      required:
-      - refreshToken
-    LoginRequest:
-      type: object
-      properties:
-        email:
-          type: string
-          format: email
-          maxLength: 255
-          minLength: 0
-        senha:
-          type: string
-          maxLength: 255
-          minLength: 0
-      required:
-      - email
-      - senha
-    LoginResponse:
-      type: object
-      properties:
-        accessToken:
-          type: string
-        refreshToken:
-          type: string
-        usuario:
-          $ref: "#/components/schemas/UsuarioResponse"
-    UsuarioResponse:
-      type: object
-      properties:
-        nome:
-          type: string
-        cargo:
-          type: string
-        permissoes:
-          type: array
-          items:
-            type: string
-    TipoMovimentacaoResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-          format: int32
-        codigo:
-          type: string
-        descricao:
-          type: string
-        direcao:
-          type: string
-          enum:
-          - ENTRADA
-          - SAIDA
-        exigeCusto:
-          type: boolean
-    PaginaResponseMovimentacaoResponse:
-      type: object
-      properties:
-        itens:
-          type: array
-          items:
-            $ref: "#/components/schemas/MovimentacaoResponse"
-        page:
-          type: integer
-          format: int32
-        size:
-          type: integer
-          format: int32
-        totalItens:
+        produtoEventoId:
           type: integer
           format: int64
-        totalPaginas:
-          type: integer
-          format: int32
-    DoacaoRequest:
-      type: object
-      properties:
-        eventoId:
-          type: integer
-          format: int64
-        tipo:
-          type: string
-          description: "dinheiro, produto ou reabastecimento (sem diferenciar maiúsculas)"
-          minLength: 1
-        valor:
-          type: number
-          description: Obrigatório e maior que zero no tipo dinheiro
-        formaPagamento:
-          type: string
-          description: "PIX, DEBITO, CREDITO ou DINHEIRO. Obrigatório no tipo dinheiro"
-        produtoId:
-          type: integer
-          format: int64
-          description: Obrigatório no reabastecimento e imutável na edição
-        nome:
-          type: string
-          description: Descrição do item. Obrigatória no tipo produto
-          maxLength: 150
-          minLength: 0
+          description: ID do item no cardápio do evento
+          example: 7
         quantidade:
           type: integer
           format: int32
-          description: Obrigatória e maior que zero no reabastecimento
-        doador:
-          type: string
-          maxLength: 150
-          minLength: 1
-        valorFicha:
-          type: number
-          description: Valor da ficha de agradecimento (maior ou igual a zero)
+          description: Quantidade vendida
+          example: 3
           minimum: 0
       required:
-      - doador
-      - eventoId
+      - produtoEventoId
+      - quantidade
+    VendaRequest:
+      type: object
+      properties:
+        valorFinal:
+          type: number
+          description: "Valor final cobrado (opcional), entre 0 e o total dos itens\
+            \ já com o desconto unitário. O desconto da venda é total - valorFinal"
+          example: 25.0
+          minimum: 0
+        itens:
+          type: array
+          description: "Itens da venda, ao menos um, sem produto repetido"
+          items:
+            $ref: "#/components/schemas/ItemVendaRequest"
+          minItems: 1
+      required:
+      - itens
+    VendaResponse:
+      type: object
+      description: Representação resumida da venda recém-registrada.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador da venda.
+        criadoEm:
+          type: string
+          format: date-time
+          description: Data e hora em que a venda foi registrada em ISO-8601.
+        desconto:
+          type: number
+          description: Desconto aplicado ao valor total da venda.
+        precoTotal:
+          type: number
+          description: Valor total cobrado pela venda.
+    FotoEventoResponse:
+      type: object
+      properties:
+        url:
+          type: string
+          description: URL relativa da foto salva
+          example: /arquivos/3f2a....png
+    CaixaRequest:
+      type: object
+      properties:
+        tipo:
+          type: string
+          description: Tipo do lançamento. QUITACAO_FIADO não é aceito neste endpoint
+          enum:
+          - VENDA_FICHA
+          - DEVOLUCAO_FICHA
+          example: VENDA_FICHA
+        valor:
+          type: number
+          description: "Valor das fichas, maior que 0, com até 2 casas decimais"
+          example: 50.0
+          minimum: 0
+        formaPagamento:
+          type: string
+          description: Forma de pagamento. FIADO só é aceito em VENDA_FICHA
+          enum:
+          - PIX
+          - DEBITO
+          - CREDITO
+          - DINHEIRO
+          - FIADO
+          example: PIX
+        nomeDevedor:
+          type: string
+          description: Nome do devedor. Obrigatório com FIADO; ignorado nas demais
+            formas
+          example: Maria
+          maxLength: 150
+          minLength: 0
+        observacao:
+          type: string
+          description: Observação do fiado (opcional)
+          example: paga no próximo evento
+          maxLength: 255
+          minLength: 0
+      required:
+      - formaPagamento
       - tipo
+      - valor
+    LancamentoResponse:
+      type: object
+      description: Representação de um lançamento de caixa.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador do lançamento.
+        tipo:
+          type: string
+          description: "Tipo do lançamento, como venda ou devolução de fichas."
+          enum:
+          - VENDA_FICHA
+          - DEVOLUCAO_FICHA
+          - QUITACAO_FIADO
+        valor:
+          type: number
+          description: Valor do lançamento em reais.
+        formaPagamento:
+          type: string
+          description: Forma de pagamento utilizada.
+          enum:
+          - PIX
+          - DEBITO
+          - CREDITO
+          - DINHEIRO
+          - FIADO
+        nomeDevedor:
+          type: string
+          description: "Nome do devedor quando o lançamento corresponde a uma venda\
+            \ fiada; caso contrário, pode ser nulo."
+        criadoEm:
+          type: string
+          format: date-time
+          description: Data e hora de criação do lançamento em ISO-8601.
+    RegistroCaixaResponse:
+      type: object
+      description: Resultado do registro de um lançamento de caixa.
+      properties:
+        lancamento:
+          $ref: "#/components/schemas/LancamentoResponse"
+          description: Lançamento de caixa registrado.
+        resumo:
+          $ref: "#/components/schemas/ResumoCaixaResponse"
+          description: Resumo financeiro atualizado do caixa.
+    ResumoCaixaResponse:
+      type: object
+      description: Resumo financeiro dos lançamentos de caixa de um evento.
+      properties:
+        fichasVendidas:
+          type: number
+          description: Valor total recebido pela venda de fichas.
+        fichasDevolvidas:
+          type: number
+          description: Valor total devolvido pela devolução de fichas.
+        saldoFichas:
+          type: number
+          description: "Saldo de fichas, calculado pelas vendas menos as devoluçõ\
+            es."
+        porFormaPagamento:
+          type: object
+          additionalProperties:
+            type: number
+          description: Totais agrupados por forma de pagamento.
+        fiadosEmAberto:
+          type: number
+          description: Valor total dos fiados ainda não quitados.
+        quantidadeFiadosEmAberto:
+          type: integer
+          format: int64
+          description: Quantidade de fiados ainda não quitados.
+        totalRecebido:
+          type: number
+          description: Valor total recebido no caixa.
     DoacaoResponse:
       type: object
       properties:
@@ -1407,51 +3232,338 @@ components:
           - PRODUTO
           - REABASTECIMENTO
         valor:
-          type: number
+          type:
+          - number
+          - "null"
+          description: Preenchido só em DINHEIRO
         formaPagamento:
-          type: string
+          type:
+          - string
+          - "null"
+          description: Preenchido só em DINHEIRO
           enum:
           - PIX
           - DEBITO
           - CREDITO
           - DINHEIRO
         produtoId:
-          type: integer
+          type:
+          - integer
+          - "null"
           format: int64
+          description: Preenchido só em REABASTECIMENTO
         nome:
-          type: string
+          type:
+          - string
+          - "null"
+          description: Descrição do item (PRODUTO) ou nome do produto (REABASTECIMENTO)
         quantidade:
-          type: integer
+          type:
+          - integer
+          - "null"
           format: int32
+          description: Preenchido só em REABASTECIMENTO
         doador:
           type: string
         valorFicha:
-          type: number
+          type:
+          - number
+          - "null"
         criadoEm:
           type: string
           format: date-time
         atualizadoEm:
           type: string
           format: date-time
-    PaginaResponseDoacaoResponse:
+    RefreshTokenRequest:
       type: object
+      properties:
+        refreshToken:
+          type: string
+          description: Refresh token recebido no login ou na última renovação
+          minLength: 1
+      required:
+      - refreshToken
+    RefreshTokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: Novo access token
+        refreshToken:
+          type: string
+          description: Novo refresh token. O anterior é revogado (rotação)
+    RedefinicaoSenhaRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Token recebido por e-mail (64 caracteres hexadecimais)
+          minLength: 1
+        novaSenha:
+          type: string
+          description: "Nova senha, de 8 a 255 caracteres"
+          example: NovaSenha@987
+          maxLength: 255
+          minLength: 8
+      required:
+      - novaSenha
+      - token
+    RecuperacaoSenhaRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: "E-mail da conta. A resposta é sempre 202, exista o e-mail\
+            \ ou não"
+          example: admin@email.com
+          maxLength: 255
+          minLength: 0
+      required:
+      - email
+    LogoutRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          description: Refresh token a ser revogado
+          minLength: 1
+      required:
+      - refreshToken
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: E-mail da conta
+          example: admin@email.com
+          maxLength: 255
+          minLength: 0
+        senha:
+          type: string
+          description: Senha da conta
+          example: Senha@12345
+          maxLength: 255
+          minLength: 0
+      required:
+      - email
+      - senha
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: "JWT de curta duração, enviado em Authorization: Bearer"
+        refreshToken:
+          type: string
+          description: Token opaco para renovar a sessão. Só o hash é persistido
+        usuario:
+          $ref: "#/components/schemas/UsuarioResponse"
+    UsuarioResponse:
+      type: object
+      description: Dados do usuário autenticado
+      properties:
+        nome:
+          type: string
+          example: admin
+        cargo:
+          type: string
+          example: ADMINISTRADOR
+        permissoes:
+          type: array
+          description: Permissões concedidas pelo cargo
+          example:
+          - EVENTOS_MENU
+          - ESTOQUE_MENU
+          items:
+            type: string
+    AlteracaoStatusEventoRequest:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+          description: "ID do novo status (1 NAO_INICIADO, 2 EM_ANDAMENTO, 3 ENCERRADO)"
+          example: 3
+        custos:
+          type: array
+          description: "Custos adicionais (limpeza, ajudantes etc.). Só aceitos na\
+            \ transição para ENCERRADO"
+          items:
+            $ref: "#/components/schemas/CustoEventoRequest"
+      required:
+      - status
+    CustoEventoRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          description: Nome do custo
+          example: Limpeza
+          maxLength: 150
+          minLength: 0
+        descricao:
+          type: string
+          description: Descrição (opcional)
+          example: Faxineira contratada
+          maxLength: 255
+          minLength: 0
+        valor:
+          type: number
+          description: "Valor, maior que 0"
+          example: 120.0
+          minimum: 0
+      required:
+      - nome
+      - valor
+    DescontoRequest:
+      type: object
+      properties:
+        novoPreco:
+          type: number
+          description: "Novo preço unitário, entre 0 e o preço de venda do produto"
+          example: 7.0
+          minimum: 0
+      required:
+      - novoPreco
+    DescontoProdutoResponse:
+      type: object
+      description: Dados do preço de venda do produto no evento após a aplicação ou
+        remoção de desconto.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador do produto no cardápio do evento.
+        precoVenda:
+          type: number
+          description: Preço unitário original do produto no evento.
+        desconto:
+          type: number
+          description: Valor do desconto aplicado por unidade.
+        descontoAplicadoEm:
+          type: string
+          format: date-time
+          description: Data e hora em que o desconto foi aplicado; nulo quando não
+            há desconto aplicado.
+        precoComDesconto:
+          type: number
+          description: Preço unitário após a aplicação do desconto.
+    QuitacaoRequest:
+      type: object
+      properties:
+        formaPagamento:
+          type: string
+          description: Forma usada na quitação. FIADO não é aceito (400)
+          enum:
+          - PIX
+          - DEBITO
+          - CREDITO
+          - DINHEIRO
+          example: DINHEIRO
+      required:
+      - formaPagamento
+    FiadoResponse:
+      type: object
+      description: Resposta com os dados de um fiado registrado no caixa.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador do fiado.
+        nomeDevedor:
+          type: string
+          description: Nome da pessoa responsável pelo pagamento pendente.
+        valor:
+          type: number
+          description: Valor do fiado em reais.
+        observacoes:
+          type: string
+          description: Observações registradas para o fiado; pode ser nulo.
+        quitado:
+          type: boolean
+          description: Indica se o fiado foi quitado.
+        quitadoEm:
+          type: string
+          format: date-time
+          description: Data e hora da quitação em ISO-8601; nulo enquanto pendente.
+        formaPagamento:
+          type: string
+          description: Forma de pagamento utilizada na quitação; nula enquanto pendente.
+          enum:
+          - PIX
+          - DEBITO
+          - CREDITO
+          - DINHEIRO
+          - FIADO
+        criadoEm:
+          type: string
+          format: date-time
+          description: Data e hora de criação do lançamento em ISO-8601.
+    QuitacaoResponse:
+      type: object
+      description: "Resultado da quitação de um fiado, incluindo o fiado atualizado,\
+        \ o lançamento gerado e o resumo do caixa."
+      properties:
+        fiado:
+          $ref: "#/components/schemas/FiadoResponse"
+          description: Dados atualizados do fiado quitado.
+        lancamento:
+          $ref: "#/components/schemas/LancamentoResponse"
+          description: Lançamento de caixa criado para registrar a quitação.
+        resumo:
+          $ref: "#/components/schemas/ResumoCaixaResponse"
+          description: Resumo atualizado do caixa.
+    TipoMovimentacaoResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        codigo:
+          type: string
+          example: REABASTECIMENTO
+        descricao:
+          type: string
+        direcao:
+          type: string
+          enum:
+          - ENTRADA
+          - SAIDA
+        exigeCusto:
+          type: boolean
+          description: "Se true, a entrada exige custoTotal"
+    PaginaResponseMovimentacaoResponse:
+      type: object
+      description: Página de resultados. page começa em 0
       properties:
         itens:
           type: array
+          description: Registros da página
           items:
-            $ref: "#/components/schemas/DoacaoResponse"
+            $ref: "#/components/schemas/MovimentacaoResponse"
         page:
           type: integer
           format: int32
+          description: "Índice da página, começando em zero"
+          example: 0
         size:
           type: integer
           format: int32
+          description: Tamanho da página
+          example: 20
         totalItens:
           type: integer
           format: int64
+          description: Total de registros
+          example: 57
         totalPaginas:
           type: integer
           format: int32
+          description: Total de páginas
+          example: 3
     EstoqueResponse:
       type: object
       properties:
@@ -1461,16 +3573,21 @@ components:
         quantidadeInicial:
           type: integer
           format: int32
+          description: Quantidade na entrada do lote
         quantidadeAtual:
           type: integer
           format: int32
+          description: Saldo atual do lote. Lote zerado permanece como histórico
         custoUnitario:
           type: number
+          description: "Custo por unidade. 0 em lotes sem custo (doação, ajuste)"
         custoTotal:
           type: number
+          description: Valor pago pelo lote inteiro
         criadoEm:
           type: string
           format: date-time
+          description: Data de entrada do lote
     EventoDetalheResponse:
       type: object
       properties:
@@ -1480,7 +3597,9 @@ components:
         nome:
           type: string
         observacoes:
-          type: string
+          type:
+          - string
+          - "null"
         tipoEvento:
           type: string
           enum:
@@ -1495,10 +3614,14 @@ components:
           type: string
           format: date-time
         iniciadoEm:
-          type: string
+          type:
+          - string
+          - "null"
           format: date-time
         encerradoEm:
-          type: string
+          type:
+          - string
+          - "null"
           format: date-time
         resumo:
           $ref: "#/components/schemas/ResumoEvento"
@@ -1508,169 +3631,186 @@ components:
         quantidadeProdutos:
           type: integer
           format: int64
+          description: Itens no cardápio
         quantidadeVendas:
           type: integer
           format: int64
+          description: Vendas não canceladas
         totalVendido:
           type: number
+          description: Soma do preço total das vendas não canceladas
         totalCustosAdicionais:
           type: number
-    ItemVendaRequest:
+          description: Soma dos custos adicionais do evento
+    CustoAdicionalRelatorio:
+      type: object
+      properties:
+        nome:
+          type: string
+        descricao:
+          type:
+          - string
+          - "null"
+        valor:
+          type: number
+    DoacaoDinheiroRelatorio:
+      type: object
+      properties:
+        doador:
+          type: string
+        valor:
+          type: number
+        formaPagamento:
+          type: string
+          enum:
+          - PIX
+          - DEBITO
+          - CREDITO
+          - DINHEIRO
+        valorFicha:
+          type:
+          - number
+          - "null"
+    DoacaoItemRelatorio:
+      type: object
+      properties:
+        tipo:
+          type: string
+          enum:
+          - DINHEIRO
+          - PRODUTO
+          - REABASTECIMENTO
+        produtoId:
+          type:
+          - integer
+          - "null"
+          format: int64
+        nome:
+          type: string
+        quantidade:
+          type:
+          - integer
+          - "null"
+          format: int32
+        doador:
+          type: string
+        valorFicha:
+          type:
+          - number
+          - "null"
+    DoacoesRelatorio:
+      type: object
+      properties:
+        itens:
+          type: array
+          description: Doações de produto e de reabastecimento
+          items:
+            $ref: "#/components/schemas/DoacaoItemRelatorio"
+        emDinheiro:
+          type: array
+          description: Doações em dinheiro
+          items:
+            $ref: "#/components/schemas/DoacaoDinheiroRelatorio"
+        totalEmDinheiro:
+          type: number
+    MovimentacaoRelatorio:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        tipo:
+          type: string
+          description: Código do tipo
+          example: PERDA
+        produtoId:
+          type: integer
+          format: int64
+        produtoNome:
+          type: string
+        quantidade:
+          type: integer
+          format: int32
+          description: Valor absoluto da quantidade movimentada
+        custoUnitario:
+          type: number
+        custoTotal:
+          type: number
+        observacoes:
+          type:
+          - string
+          - "null"
+        criadoEm:
+          type: string
+          format: date-time
+    ProdutoRanking:
       type: object
       properties:
         produtoEventoId:
           type: integer
           format: int64
-        quantidade:
+        nome:
+          type: string
+        categoria:
+          type:
+          - string
+          - "null"
+        quantidadeVendida:
           type: integer
+          format: int64
+    ProdutoRelatorio:
+      type: object
+      properties:
+        produtoEventoId:
+          type: integer
+          format: int64
+        nome:
+          type: string
+        origem:
+          type: string
+          enum:
+          - ESTOQUE
+          - PRODUZIDO
+        quantidadePrevista:
+          type:
+          - integer
+          - "null"
           format: int32
-          minimum: 1
-      required:
-      - produtoEventoId
-      - quantidade
-    VendaRequest:
+          description: Nulo em itens PRODUZIDO
+        quantidadeVendida:
+          type: integer
+          format: int64
+        totalDescontos:
+          type: number
+          description: Soma de quantidade x descontoUnitario
+        custoTotal:
+          type: number
+          description: "ESTOQUE: custo dos lotes consumidos nas vendas (lote sem custo\
+            \ conta 0). PRODUZIDO: custo dos ingredientes"
+        receitaVendas:
+          type: number
+          description: Soma de quantidade x (precoUnitario - descontoUnitario)
+        lucroBruto:
+          type: number
+          description: "Total arrecadado do produto, sem descontar custos"
+        lucroLiquido:
+          type: number
+          description: receitaVendas - custoTotal
+        precoVendido:
+          type: number
+          description: "Preço de venda, sem descontos"
+    RankingProdutos:
       type: object
       properties:
-        valorFinal:
-          type: number
-          minimum: 0
-        itens:
+        quantidadeVendasTotais:
+          type: integer
+          format: int64
+          description: Total de unidades vendidas
+        ranking:
           type: array
-          minItems: 1
+          description: "Produtos com venda, do mais vendido para o menos vendido"
           items:
-            $ref: "#/components/schemas/ItemVendaRequest"
-      required:
-      - itens
-    VendaResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-          format: int64
-        criadoEm:
-          type: string
-          format: date-time
-        desconto:
-          type: number
-        precoTotal:
-          type: number
-    DescontoRequest:
-      type: object
-      properties:
-        novoPreco:
-          type: number
-          minimum: 0
-      required:
-      - novoPreco
-    DescontoProdutoResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-          format: int64
-        precoVenda:
-          type: number
-        desconto:
-          type: number
-        descontoAplicadoEm:
-          type: string
-          format: date-time
-        precoComDesconto:
-          type: number
-    CaixaRequest:
-      type: object
-      properties:
-        tipo:
-          type: string
-          enum:
-          - VENDA_FICHA
-          - DEVOLUCAO_FICHA
-          - QUITACAO_FIADO
-        valor:
-          type: number
-          exclusiveMinimum: 0
-        formaPagamento:
-          type: string
-          enum:
-          - PIX
-          - DEBITO
-          - CREDITO
-          - DINHEIRO
-          - FIADO
-        nomeDevedor:
-          type: string
-          maxLength: 150
-        observacao:
-          type: string
-          maxLength: 255
-      required:
-      - formaPagamento
-      - tipo
-      - valor
-    QuitacaoRequest:
-      type: object
-      properties:
-        formaPagamento:
-          type: string
-          enum:
-          - PIX
-          - DEBITO
-          - CREDITO
-          - DINHEIRO
-          - FIADO
-      required:
-      - formaPagamento
-    LancamentoResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-          format: int64
-        tipo:
-          type: string
-          enum:
-          - VENDA_FICHA
-          - DEVOLUCAO_FICHA
-          - QUITACAO_FIADO
-        valor:
-          type: number
-        formaPagamento:
-          type: string
-          enum:
-          - PIX
-          - DEBITO
-          - CREDITO
-          - DINHEIRO
-          - FIADO
-        nomeDevedor:
-          type: string
-        criadoEm:
-          type: string
-          format: date-time
-    ResumoCaixaResponse:
-      type: object
-      properties:
-        fichasVendidas:
-          type: number
-        fichasDevolvidas:
-          type: number
-        saldoFichas:
-          type: number
-        porFormaPagamento:
-          type: object
-          additionalProperties:
-            type: number
-        fiadosEmAberto:
-          type: number
-        quantidadeFiadosEmAberto:
-          type: integer
-          format: int64
-        totalRecebido:
-          type: number
-    RelatorioResponse:
-      oneOf:
-      - $ref: "#/components/schemas/RelatorioEventoResponse"
-      - $ref: "#/components/schemas/RelatorioReuniaoResponse"
+            $ref: "#/components/schemas/ProdutoRanking"
     RelatorioEventoResponse:
       type: object
       description: Relatório de um evento do tipo EVENTO
@@ -1689,10 +3829,12 @@ components:
           $ref: "#/components/schemas/StatusResumo"
         parcial:
           type: boolean
+          description: "true com o evento EM_ANDAMENTO: valores parciais"
         resumo:
           $ref: "#/components/schemas/ResumoFinanceiro"
         produtos:
           type: array
+          description: "Todos os itens do cardápio, inclusive sem venda"
           items:
             $ref: "#/components/schemas/ProdutoRelatorio"
         custosAdicionais:
@@ -1705,15 +3847,23 @@ components:
           $ref: "#/components/schemas/DoacoesRelatorio"
         movimentacoesEvento:
           type: array
+          description: Consumo e perdas vinculados ao evento. Não existe registro
+            separado de sobras
           items:
             $ref: "#/components/schemas/MovimentacaoRelatorio"
         produtosMaisVendidos:
           $ref: "#/components/schemas/RankingProdutos"
         vendasPorHora:
           $ref: "#/components/schemas/VendasPorHora"
+    RelatorioResponse:
+      description: "Relatório do evento. Para EVENTO retorna RelatorioEventoResponse;\
+        \ para REUNIAO, RelatorioReuniaoResponse"
+      oneOf:
+      - $ref: "#/components/schemas/RelatorioEventoResponse"
+      - $ref: "#/components/schemas/RelatorioReuniaoResponse"
     RelatorioReuniaoResponse:
       type: object
-      description: Relatório de um evento do tipo REUNIAO (somente custos)
+      description: "Relatório de uma REUNIAO: só custos, sem receita nem lucro"
       properties:
         eventoId:
           type: integer
@@ -1733,6 +3883,7 @@ components:
           $ref: "#/components/schemas/ResumoReuniao"
         itens:
           type: array
+          description: "Compras, doações e consumo interno da reunião"
           items:
             $ref: "#/components/schemas/MovimentacaoRelatorio"
         custosAdicionais:
@@ -1744,27 +3895,37 @@ components:
       properties:
         receitaVendas:
           type: number
+          description: Soma do preço total das vendas não canceladas (já com descontos)
         descontosVendas:
           type: number
+          description: Soma dos descontos dados na venda inteira. Informativo
         custoCompras:
           type: number
+          description: Compras (REABASTECIMENTO) do evento
         custoFichasAgradecimento:
           type: number
+          description: Soma dos valores de ficha de agradecimento
         custoIngredientes:
           type: number
+          description: Soma do custo dos ingredientes dos itens PRODUZIDO
         totalCustosAdicionais:
           type: number
         doacoesEmDinheiro:
           type: number
         receitaTotal:
           type: number
+          description: receitaVendas + doacoesEmDinheiro
         custoTotal:
           type: number
+          description: custoCompras + custoFichasAgradecimento + custoIngredientes
+            + totalCustosAdicionais
         lucro:
           type: number
+          description: receitaTotal - custoTotal. Pode ser negativo
         vendas:
           type: integer
           format: int64
+          description: Quantidade de vendas não canceladas
     ResumoReuniao:
       type: object
       properties:
@@ -1776,142 +3937,16 @@ components:
           type: number
         custoTotal:
           type: number
-    ProdutoRelatorio:
+          description: custoCompras + custoConsumoInterno + totalCustosAdicionais
+    VendaHora:
       type: object
       properties:
-        produtoEventoId:
-          type: integer
-          format: int64
-        nome:
-          type: string
-        origem:
-          type: string
-          enum:
-          - ESTOQUE
-          - PRODUZIDO
-        quantidadePrevista:
+        hora:
           type: integer
           format: int32
-        quantidadeVendida:
-          type: integer
-          format: int64
-        totalDescontos:
-          type: number
-        custoTotal:
-          type: number
-        receitaVendas:
-          type: number
-        lucroBruto:
-          type: number
-        lucroLiquido:
-          type: number
-        precoVendido:
-          type: number
-    CustoAdicionalRelatorio:
-      type: object
-      properties:
-        nome:
-          type: string
-        descricao:
-          type: string
-        valor:
-          type: number
-    DoacoesRelatorio:
-      type: object
-      properties:
-        itens:
-          type: array
-          items:
-            $ref: "#/components/schemas/DoacaoItemRelatorio"
-        emDinheiro:
-          type: array
-          items:
-            $ref: "#/components/schemas/DoacaoDinheiroRelatorio"
-        totalEmDinheiro:
-          type: number
-    DoacaoItemRelatorio:
-      type: object
-      properties:
-        tipo:
-          type: string
-          enum:
-          - DINHEIRO
-          - PRODUTO
-          - REABASTECIMENTO
-        produtoId:
-          type: integer
-          format: int64
-        nome:
-          type: string
-        quantidade:
-          type: integer
-          format: int32
-        doador:
-          type: string
-        valorFicha:
-          type: number
-    DoacaoDinheiroRelatorio:
-      type: object
-      properties:
-        doador:
-          type: string
-        valor:
-          type: number
-        formaPagamento:
-          type: string
-          enum:
-          - PIX
-          - DEBITO
-          - CREDITO
-          - DINHEIRO
-        valorFicha:
-          type: number
-    MovimentacaoRelatorio:
-      type: object
-      properties:
-        id:
-          type: integer
-          format: int64
-        tipo:
-          type: string
-        produtoId:
-          type: integer
-          format: int64
-        produtoNome:
-          type: string
-        quantidade:
-          type: integer
-          format: int32
-        custoUnitario:
-          type: number
-        custoTotal:
-          type: number
-        observacoes:
-          type: string
-        criadoEm:
-          type: string
-          format: date-time
-    RankingProdutos:
-      type: object
-      properties:
-        quantidadeVendasTotais:
-          type: integer
-          format: int64
-        ranking:
-          type: array
-          items:
-            $ref: "#/components/schemas/ProdutoRanking"
-    ProdutoRanking:
-      type: object
-      properties:
-        produtoEventoId:
-          type: integer
-          format: int64
-        nome:
-          type: string
-        categoria:
-          type: string
-        quantidadeVendida:
+          description: "Hora do dia, de 0 a 23"
+          example: 14
+        quantidadeVendas:
           type: integer
           format: int64
     VendasPorHora:
@@ -1920,94 +3955,198 @@ components:
         quantidadeVendasTotais:
           type: integer
           format: int64
+          description: Total de vendas não canceladas
         ranking:
           type: array
+          description: "Quantidade de vendas por hora, em ordem crescente. Fuso America/Sao_Paulo"
           items:
             $ref: "#/components/schemas/VendaHora"
-    VendaHora:
+    PaginaResponseVendaHistoricoResponse:
       type: object
-      properties:
-        hora:
-          type: integer
-          format: int32
-        quantidadeVendas:
-          type: integer
-          format: int64
-    PaginaResponseLancamentoResponse:
-      type: object
+      description: Página de resultados. page começa em 0
       properties:
         itens:
           type: array
+          description: Registros da página
+          items:
+            $ref: "#/components/schemas/VendaHistoricoResponse"
+        page:
+          type: integer
+          format: int32
+          description: "Índice da página, começando em zero"
+          example: 0
+        size:
+          type: integer
+          format: int32
+          description: Tamanho da página
+          example: 20
+        totalItens:
+          type: integer
+          format: int64
+          description: Total de registros
+          example: 57
+        totalPaginas:
+          type: integer
+          format: int32
+          description: Total de páginas
+          example: 3
+    VendaHistoricoResponse:
+      type: object
+      description: Resumo de uma venda exibida no histórico de vendas do evento.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador da venda.
+        criadoEm:
+          type: string
+          format: date-time
+          description: Data e hora em que a venda foi registrada em ISO-8601.
+        desconto:
+          type: number
+          description: Desconto aplicado ao valor total da venda.
+        precoTotal:
+          type: number
+          description: Valor total cobrado pela venda.
+        quantidadeItens:
+          type: integer
+          format: int32
+          description: Soma das quantidades de todos os itens da venda.
+        cancelada:
+          type: boolean
+          description: Indica se a venda foi cancelada.
+    ItemVendaDetalheResponse:
+      type: object
+      description: "Detalhes de um item registrado em uma venda, preservando os valores\
+        \ praticados no momento da transação."
+      properties:
+        produtoEventoId:
+          type: integer
+          format: int64
+          description: Identificador do produto no cardápio do evento.
+        nome:
+          type: string
+          description: Nome do produto no momento da venda.
+        quantidade:
+          type: integer
+          format: int32
+          description: Quantidade vendida.
+        precoUnitario:
+          type: number
+          description: "Preço unitário registrado no momento da venda, antes do desconto\
+            \ unitário."
+        descontoUnitario:
+          type: number
+          description: Desconto por unidade registrado no momento da venda.
+    VendaDetalheResponse:
+      type: object
+      description: "Detalhes de uma venda, incluindo itens, valores e situação de\
+        \ cancelamento."
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Identificador da venda.
+        criadoEm:
+          type: string
+          format: date-time
+          description: Data e hora em que a venda foi registrada em ISO-8601.
+        itens:
+          type: array
+          description: "Itens que compõem a venda, com preços registrados no momento\
+            \ da venda."
+          items:
+            $ref: "#/components/schemas/ItemVendaDetalheResponse"
+        desconto:
+          type: number
+          description: Desconto aplicado ao valor total da venda.
+        precoTotal:
+          type: number
+          description: Valor total cobrado pela venda.
+        cancelada:
+          type: boolean
+          description: Indica se a venda foi cancelada.
+        canceladaEm:
+          type: string
+          format: date-time
+          description: Data e hora do cancelamento em ISO-8601; nulo se a venda não
+            foi cancelada.
+    CaixaResponse:
+      type: object
+      description: "Resposta da consulta do caixa, com resumo financeiro e lançamentos\
+        \ paginados."
+      properties:
+        resumo:
+          $ref: "#/components/schemas/ResumoCaixaResponse"
+          description: Resumo financeiro do caixa.
+        lancamentos:
+          $ref: "#/components/schemas/PaginaResponseLancamentoResponse"
+          description: Lançamentos de caixa da página solicitada.
+    PaginaResponseLancamentoResponse:
+      type: object
+      description: Página de resultados. page começa em 0
+      properties:
+        itens:
+          type: array
+          description: Registros da página
           items:
             $ref: "#/components/schemas/LancamentoResponse"
         page:
           type: integer
           format: int32
+          description: "Índice da página, começando em zero"
+          example: 0
         size:
           type: integer
           format: int32
+          description: Tamanho da página
+          example: 20
         totalItens:
           type: integer
           format: int64
+          description: Total de registros
+          example: 57
         totalPaginas:
           type: integer
           format: int32
-    CaixaResponse:
+          description: Total de páginas
+          example: 3
+    PaginaResponseDoacaoResponse:
       type: object
+      description: Página de resultados. page começa em 0
       properties:
-        resumo:
-          $ref: "#/components/schemas/ResumoCaixaResponse"
-        lancamentos:
-          $ref: "#/components/schemas/PaginaResponseLancamentoResponse"
-    RegistroCaixaResponse:
-      type: object
-      properties:
-        lancamento:
-          $ref: "#/components/schemas/LancamentoResponse"
-        resumo:
-          $ref: "#/components/schemas/ResumoCaixaResponse"
-    ExclusaoCaixaResponse:
-      type: object
-      properties:
-        resumo:
-          $ref: "#/components/schemas/ResumoCaixaResponse"
-    FiadoResponse:
-      type: object
-      properties:
-        id:
+        itens:
+          type: array
+          description: Registros da página
+          items:
+            $ref: "#/components/schemas/DoacaoResponse"
+        page:
+          type: integer
+          format: int32
+          description: "Índice da página, começando em zero"
+          example: 0
+        size:
+          type: integer
+          format: int32
+          description: Tamanho da página
+          example: 20
+        totalItens:
           type: integer
           format: int64
-        nomeDevedor:
-          type: string
-        valor:
-          type: number
-        observacoes:
-          type: string
-        quitado:
-          type: boolean
-        quitadoEm:
-          type: string
-          format: date-time
-        formaPagamento:
-          type: string
-          enum:
-          - PIX
-          - DEBITO
-          - CREDITO
-          - DINHEIRO
-          - FIADO
-        criadoEm:
-          type: string
-          format: date-time
-    QuitacaoResponse:
+          description: Total de registros
+          example: 57
+        totalPaginas:
+          type: integer
+          format: int32
+          description: Total de páginas
+          example: 3
+    ExclusaoCaixaResponse:
       type: object
+      description: Resposta da exclusão de um lançamento de caixa.
       properties:
-        fiado:
-          $ref: "#/components/schemas/FiadoResponse"
-        lancamento:
-          $ref: "#/components/schemas/LancamentoResponse"
         resumo:
           $ref: "#/components/schemas/ResumoCaixaResponse"
+          description: Resumo financeiro do caixa após a exclusão.
   securitySchemes:
     bearerAuth:
       type: http

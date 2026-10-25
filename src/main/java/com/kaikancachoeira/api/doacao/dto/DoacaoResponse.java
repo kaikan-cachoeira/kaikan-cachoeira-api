@@ -3,6 +3,7 @@ package com.kaikancachoeira.api.doacao.dto;
 import com.kaikancachoeira.api.doacao.entity.Doacao;
 import com.kaikancachoeira.api.doacao.enums.FormaPagamentoDoacao;
 import com.kaikancachoeira.api.doacao.enums.TipoDoacao;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -11,13 +12,13 @@ public record DoacaoResponse(
         Long id,
         Long eventoId,
         TipoDoacao tipo,
-        BigDecimal valor,
-        FormaPagamentoDoacao formaPagamento,
-        Long produtoId,
-        String nome,
-        Integer quantidade,
+        @Schema(description = "Preenchido só em DINHEIRO", nullable = true) BigDecimal valor,
+        @Schema(description = "Preenchido só em DINHEIRO", nullable = true) FormaPagamentoDoacao formaPagamento,
+        @Schema(description = "Preenchido só em REABASTECIMENTO", nullable = true) Long produtoId,
+        @Schema(description = "Descrição do item (PRODUTO) ou nome do produto (REABASTECIMENTO)", nullable = true) String nome,
+        @Schema(description = "Preenchido só em REABASTECIMENTO", nullable = true) Integer quantidade,
         String doador,
-        BigDecimal valorFicha,
+        @Schema(nullable = true) BigDecimal valorFicha,
         Instant criadoEm,
         Instant atualizadoEm
 ) {
