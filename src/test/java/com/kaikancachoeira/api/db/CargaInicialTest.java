@@ -13,7 +13,7 @@ class CargaInicialTest extends DbIntegrationTest {
 
     @Test
     void todasAsMigrationsDevemTerSidoAplicadasComSucesso() {
-        assertThat(count("select count(*) from flyway_schema_history where success")).isEqualTo(28);
+        assertThat(count("select count(*) from flyway_schema_history where success")).isEqualTo(29);
         assertThat(count("select count(*) from flyway_schema_history where not success")).isZero();
     }
 
@@ -88,6 +88,21 @@ class CargaInicialTest extends DbIntegrationTest {
                 .isEqualTo("EM_ANDAMENTO");
         assertThat(jdbc.queryForObject("select codigo from status_evento where id = 3", String.class))
                 .isEqualTo("ENCERRADO");
+
+        assertThat(jdbc.queryForObject(
+                "select descricao from status_evento where codigo = ?",
+                String.class, "NAO_INICIADO"))
+                .isEqualTo("Não iniciado");
+
+        assertThat(jdbc.queryForObject(
+                "select descricao from status_evento where codigo = ?",
+                String.class, "EM_ANDAMENTO"))
+                .isEqualTo("Em andamento");
+
+        assertThat(jdbc.queryForObject(
+                "select descricao from status_evento where codigo = ?",
+                String.class, "ENCERRADO"))
+                .isEqualTo("Encerrado");
     }
 
     @Test
