@@ -23,6 +23,13 @@ import com.kaikancachoeira.api.venda.dto.VendaResponse;
 import com.kaikancachoeira.api.venda.entity.ItemVenda;
 import com.kaikancachoeira.api.venda.entity.Venda;
 import com.kaikancachoeira.api.venda.repository.VendaRepository;
+import com.kaikancachoeira.api.common.dto.PaginaResponse;
+import com.kaikancachoeira.api.common.exception.RecursoNaoEncontradoException;
+import com.kaikancachoeira.api.venda.dto.ItemVendaDetalheResponse;
+import com.kaikancachoeira.api.venda.dto.VendaDetalheResponse;
+import com.kaikancachoeira.api.venda.dto.VendaHistoricoResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -142,6 +149,42 @@ public class VendaService {
         Instant agora = Instant.now(clock);
         venda.setCanceladaEm(agora);
         estornarEstoque(venda, eventoId, agora);
+    }
+
+    @Transactional(readOnly = true)
+    public PaginaResponse<VendaHistoricoResponse> listarHistorico(
+            Long eventoId,
+            String q,
+            Instant dataHoraInicio,
+            Instant dataHoraFim,
+            Boolean cancelada,
+            int page,
+            int size
+    ) {
+        if (!eventoRepository.existsById(eventoId)) {
+            throw RecursoNaoEncontradoException.de("Evento", eventoId);
+        }
+
+        String texto = (q == null || q.isBlank()) ? null : q.trim();
+
+        Page<Venda> pagina = vendaRepository.buscarHistorico(
+                eventoId,
+                texto,
+                dataHoraInicio,
+                dataHoraFim,
+                cancelada,
+                PageRequest.of(page, size)
+        );
+
+        return PaginaResponse.de(pagina.map(VendaHistoricoResponse::de));
+    }
+
+    @Transactional(readOnly = true)
+    public VendaDetalheResponse detalhar(Long eventoId, Long vendaId) {
+        Venda venda = vendaRepository.findByIdAndEventoId(vendaId, eventoId)
+                .orElseThrow(() -> RecursoNaoEncontradoException.de("Venda", vendaId));
+
+        return VendaDetalheResponse.de(venda);
     }
 
     private void baixarEstoque(Venda venda, Long eventoId) {

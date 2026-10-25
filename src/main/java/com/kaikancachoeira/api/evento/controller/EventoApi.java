@@ -171,4 +171,37 @@ public interface EventoApi {
             )
             @RequestBody @Valid EventoRequest request
     );
+
+    @Operation(
+            summary = "Exclui evento",
+            description = """
+                    Exclui um evento que ainda não foi iniciado e que não possui
+                    vendas, doações ou movimentações de estoque.
+                    Os produtos do evento e os custos adicionais são removidos
+                    explicitamente na mesma transação.
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "Evento excluído"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Evento não encontrado"
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Evento não pode ser excluído devido ao status ou a registros associados",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErroResponse.class)
+                    )
+            )
+    })
+    ResponseEntity<Void> excluir(
+            @Parameter(description = "ID do evento", required = true)
+            @PathVariable Long id
+    );
+
 }

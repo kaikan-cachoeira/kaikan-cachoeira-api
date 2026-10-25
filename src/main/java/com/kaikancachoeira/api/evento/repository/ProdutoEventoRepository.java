@@ -55,4 +55,6 @@ public interface ProdutoEventoRepository extends JpaRepository<ProdutoEvento, Lo
             """, nativeQuery = true)
     boolean foiVendido(@Param("peId") Long peId);
 
+    void deleteByEventoId(Long eventoId);
+
 }

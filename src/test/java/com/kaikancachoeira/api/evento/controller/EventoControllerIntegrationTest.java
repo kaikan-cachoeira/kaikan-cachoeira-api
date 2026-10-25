@@ -24,6 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 
 class EventoControllerIntegrationTest extends DbIntegrationTest {
 
@@ -65,6 +66,11 @@ class EventoControllerIntegrationTest extends DbIntegrationTest {
     private ResultActions atualizar(Long id, String corpo, String auth) throws Exception {
         return mockMvc.perform(put("/eventos/{id}", id).header(AUTHORIZATION, auth)
                 .contentType(MediaType.APPLICATION_JSON).content(corpo));
+    }
+
+    private ResultActions excluir(Long id, String auth) throws Exception {
+        return mockMvc.perform(delete("/eventos/{id}", id)
+                .header(AUTHORIZATION, auth));
     }
 
     private static String json(String nome, String tipo, Instant inicio, Instant fim) {
@@ -505,4 +511,177 @@ class EventoControllerIntegrationTest extends DbIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.codigo").value("EVENTO_EM_ANDAMENTO_EXISTENTE"));
     }
+
+    @Test
+    void excluirEventoNaoIniciadoSemDependenciasDeveRetornar204() throws Exception {
+        Long id = insertEvento("Evento para excluir", "EVENTO", "NAO_INICIADO");
+
+        assertThat(count("select count(*) from evento where id = ?", id)).isEqualTo(1);
+
+        excluir(id, menu())
+                .andExpect(status().isNoContent());
+
+        assertThat(count("select count(*) from evento where id = ?", id))
+                .isZero();
+    }
+
+    @Test
+    void excluirEventoEmAndamentoDeveRetornar409() throws Exception {
+        Long id = insertEvento("Evento em andamento", "EVENTO", "EM_ANDAMENTO");
+
+        excluir(id, menu())
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("EXCLUSAO_EVENTO_STATUS_INVALIDO"));
+
+        assertThat(count("select count(*) from evento where id = ?", id))
+                .isEqualTo(1);
+    }
+
+
+    @Test
+    void excluirEventoComVendaCanceladaDeveRetornar409() throws Exception {
+        Long evento = insertEvento("Evento com venda cancelada", "EVENTO", "NAO_INICIADO");
+        Long venda = insertVenda(evento, bd("0.00"), bd("30.00"));
+
+        jdbc.update("update venda set cancelada_em = now() where id = ?", venda);
+
+        excluir(evento, menu())
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("EXCLUSAO_EVENTO_COM_REGISTROS"));
+
+        assertThat(count("select count(*) from evento where id = ?", evento))
+                .isEqualTo(1);
+    }
+
+
+    @Test
+    void excluirEventoComDoacaoDeveRetornar409() throws Exception {
+        Long evento = insertEvento("Evento com doação", "EVENTO", "NAO_INICIADO");
+
+        insertDoacao(
+                evento,
+                "DINHEIRO",
+                null,
+                null,
+                null,
+                bd("50.00"),
+                "DINHEIRO",
+                "Doador teste",
+                null
+        );
+
+        excluir(evento, menu())
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("EXCLUSAO_EVENTO_COM_REGISTROS"));
+
+        assertThat(count("select count(*) from evento where id = ?", evento))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void excluirEventoComMovimentacaoEstoqueDeveRetornar409() throws Exception {
+        Long evento = insertEvento("Evento com movimentação", "EVENTO", "NAO_INICIADO");
+        Long produto = insertProduto("Produto movimentado");
+
+        Long estoque = insertLote(
+                produto,
+                10,
+                10,
+                bd("5.00"),
+                bd("50.00")
+        );
+
+        jdbc.update("""
+        insert into movimentacao_estoque (
+            estoque_id,
+            tipo_movimentacao_id,
+            evento_id,
+            quantidade
+        )
+        values (
+            ?, (select id from tipo_movimentacao where codigo = 'AJUSTE_ENTRADA'),
+            ?, 1
+        )
+        """, estoque, evento);
+
+        excluir(evento, menu())
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("EXCLUSAO_EVENTO_COM_REGISTROS"));
+
+        assertThat(count("select count(*) from evento where id = ?", evento))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void excluirEventoComLancamentoCaixaDeveRetornar409() throws Exception {
+        Long evento = insertEvento("Evento com lançamento de caixa", "EVENTO", "NAO_INICIADO");
+
+        jdbc.update("""
+        insert into pagamento_caixa (evento_id, tipo, valor, forma_pagamento)
+        values (?, 'VENDA_FICHA', 10.00, 'DINHEIRO')
+        """, evento);
+
+        excluir(evento, menu())
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("EXCLUSAO_EVENTO_COM_REGISTROS"));
+
+        assertThat(count("select count(*) from evento where id = ?", evento))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void excluirEventoInexistenteDeveRetornar404() throws Exception {
+        excluir(999_999L, menu())
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.codigo").value("RECURSO_NAO_ENCONTRADO"));
+    }
+
+    @Test
+    void excluirExigeEventosMenu() throws Exception {
+        Long id = insertEvento("Evento protegido", "EVENTO", "NAO_INICIADO");
+
+        excluir(id, leitura())
+                .andExpect(status().isForbidden());
+
+        assertThat(count("select count(*) from evento where id = ?", id)).isEqualTo(1);
+    }
+
+    @Test
+    void excluirEventoDeveRemoverProdutosECustosExplicitamente() throws Exception {
+        Long evento = insertEvento(
+                "Evento com produtos e custos", "EVENTO", "NAO_INICIADO");
+
+        Long produtoEvento = insertPeProduzido(
+                evento, "Tempurá", bd("10.00"), bd("3.00"));
+
+        jdbc.update("""
+        insert into custo_evento (evento_id, nome, valor)
+        values (?, 'Limpeza', 20.00)
+        """, evento);
+
+        assertThat(count(
+                "select count(*) from produto_evento where evento_id = ?", evento))
+                .isEqualTo(1);
+
+        assertThat(count(
+                "select count(*) from custo_evento where evento_id = ?", evento))
+                .isEqualTo(1);
+
+        excluir(evento, menu())
+                .andExpect(status().isNoContent());
+
+        assertThat(count(
+                "select count(*) from evento where id = ?", evento))
+                .isZero();
+
+        assertThat(count(
+                "select count(*) from produto_evento where id = ?", produtoEvento))
+                .isZero();
+
+        assertThat(count(
+                "select count(*) from custo_evento where evento_id = ?", evento))
+                .isZero();
+    }
+
+
 }
