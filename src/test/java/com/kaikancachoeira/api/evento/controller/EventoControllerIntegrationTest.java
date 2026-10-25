@@ -148,7 +148,7 @@ class EventoControllerIntegrationTest extends DbIntegrationTest {
                 .andExpect(jsonPath("$[0].nome").value("Bingo"))
                 .andExpect(jsonPath("$[0].tipoEvento").value("EVENTO"))
                 .andExpect(jsonPath("$[0].status.codigo").value("NAO_INICIADO"))
-                .andExpect(jsonPath("$[0].status.descricao").value("Evento não iniciado"))
+                .andExpect(jsonPath("$[0].status.descricao").value("Não iniciado"))
                 .andExpect(jsonPath("$[0].dataHoraInicio").isNotEmpty())
                 .andExpect(jsonPath("$[0].dataHoraEncerramento").isNotEmpty())
                 .andExpect(jsonPath("$[0].iniciadoEm").doesNotExist())
