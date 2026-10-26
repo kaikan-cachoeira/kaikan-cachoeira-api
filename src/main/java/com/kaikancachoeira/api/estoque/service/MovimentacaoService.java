@@ -6,6 +6,8 @@ import com.kaikancachoeira.api.common.exception.RequisicaoInvalidaException;
 import com.kaikancachoeira.api.common.dto.PaginaResponse;
 import com.kaikancachoeira.api.estoque.dto.*;
 import com.kaikancachoeira.api.estoque.entity.*;
+import com.kaikancachoeira.api.evento.entity.Evento;
+import com.kaikancachoeira.api.evento.repository.EventoRepository;
 import com.kaikancachoeira.api.estoque.repository.EstoqueRepository;
 import com.kaikancachoeira.api.estoque.repository.MovimentacaoEstoqueRepository;
 import com.kaikancachoeira.api.estoque.repository.ProdutoRepository;
@@ -19,7 +21,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 public class MovimentacaoService {
@@ -31,15 +36,18 @@ public class MovimentacaoService {
     private final EstoqueRepository estoqueRepository;
     private final TipoMovimentacaoRepository tipoRepository;
     private final MovimentacaoEstoqueRepository movimentacaoRepository;
+    private final EventoRepository eventoRepository;
 
     public MovimentacaoService(ProdutoRepository produtoRepository,
                                EstoqueRepository estoqueRepository,
                                TipoMovimentacaoRepository tipoRepository,
-                               MovimentacaoEstoqueRepository movimentacaoRepository) {
+                               MovimentacaoEstoqueRepository movimentacaoRepository,
+                               EventoRepository eventoRepository) {
         this.produtoRepository = produtoRepository;
         this.estoqueRepository = estoqueRepository;
         this.tipoRepository = tipoRepository;
         this.movimentacaoRepository = movimentacaoRepository;
+        this.eventoRepository = eventoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -66,7 +74,7 @@ public class MovimentacaoService {
                 : saida(produto, tipo, request);
 
         return new MovimentacaoResultadoResponse(
-                movimentacoes.stream().map(MovimentacaoResponse::de).toList(),
+                mapearMovimentacoesComEventoNome(movimentacoes),
                 produto.getQuantidadeAtual());
     }
 
@@ -86,7 +94,7 @@ public class MovimentacaoService {
         Page<MovimentacaoEstoque> pagina = movimentacaoRepository.buscarPorProduto(
                 produtoId, tipoId, eventoId, inicio, fim, PageRequest.of(page, size));
 
-        return PaginaResponse.de(pagina.map(MovimentacaoResponse::de));
+        return PaginaResponse.de(pagina.map(this::mapearMovimentacao));
     }
 
     @Transactional(readOnly = true)
@@ -105,7 +113,7 @@ public class MovimentacaoService {
             throw RecursoNaoEncontradoException.de("Lote", estoqueId);
         }
         Page<MovimentacaoEstoque> pagina = movimentacaoRepository.buscarPorLote(estoqueId, PageRequest.of(page, size));
-        return PaginaResponse.de(pagina.map(MovimentacaoResponse::de));
+        return PaginaResponse.de(pagina.map(this::mapearMovimentacao));
     }
 
     private void validarEvento(TipoMovimentacao tipo, Long eventoId) {
@@ -197,5 +205,39 @@ public class MovimentacaoService {
         m.setEventoId(request.eventoId());
         m.setObservacoes(request.observacoes());
         return movimentacaoRepository.save(m);
+    }
+
+    private List<MovimentacaoResponse> mapearMovimentacoesComEventoNome(List<MovimentacaoEstoque> movimentacoes) {
+        Map<Long, String> nomes = carregarNomesEventos(movimentacoes);
+        return movimentacoes.stream()
+                .map(m -> MovimentacaoResponse.de(m, nomes.get(m.getEventoId())))
+                .toList();
+    }
+
+    private MovimentacaoResponse mapearMovimentacao(MovimentacaoEstoque movimentacao) {
+        String eventoNome = null;
+        if (movimentacao.getEventoId() != null) {
+            eventoNome = eventoRepository.findById(movimentacao.getEventoId())
+                    .map(Evento::getNome)
+                    .orElse(null);
+        }
+        return MovimentacaoResponse.de(movimentacao, eventoNome);
+    }
+
+    private Map<Long, String> carregarNomesEventos(List<MovimentacaoEstoque> movimentacoes) {
+        Set<Long> ids = movimentacoes.stream()
+                .map(MovimentacaoEstoque::getEventoId)
+                .filter(id -> id != null)
+                .collect(java.util.stream.Collectors.toSet());
+
+        Map<Long, String> nomes = new HashMap<>();
+        if (ids.isEmpty()) {
+            return nomes;
+        }
+
+        eventoRepository.findAllById(ids)
+                .forEach(evento -> nomes.put(evento.getId(), evento.getNome()));
+
+        return nomes;
     }
 }
