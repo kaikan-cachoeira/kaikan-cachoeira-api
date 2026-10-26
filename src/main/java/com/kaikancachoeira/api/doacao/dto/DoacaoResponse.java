@@ -11,6 +11,7 @@ import java.time.Instant;
 public record DoacaoResponse(
         Long id,
         Long eventoId,
+        String eventoNome,
         TipoDoacao tipo,
         @Schema(description = "Preenchido só em DINHEIRO", nullable = true) BigDecimal valor,
         @Schema(description = "Preenchido só em DINHEIRO", nullable = true) FormaPagamentoDoacao formaPagamento,
@@ -23,10 +24,11 @@ public record DoacaoResponse(
         Instant atualizadoEm
 ) {
 
-    public static DoacaoResponse de(Doacao d) {
+    public static DoacaoResponse de(Doacao d, String eventoNome) {
         return new DoacaoResponse(
                 d.getId(),
                 d.getEventoId(),
+                eventoNome,
                 d.getTipo(),
                 d.getValor(),
                 d.getFormaPagamento(),
