@@ -3502,6 +3502,8 @@ components:
         eventoId:
           type: integer
           format: int64
+        eventoNome:
+          type: string
         tipo:
           type: string
           enum:

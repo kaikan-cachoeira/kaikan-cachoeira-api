@@ -32,7 +32,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class DoacaoService {
@@ -83,7 +87,8 @@ public class DoacaoService {
                 Sort.by(Sort.Order.desc("criadoEm"), Sort.Order.desc("id")));
 
         Page<Doacao> pagina = doacaoRepository.findAll(spec, paginacao);
-        return PaginaResponse.de(pagina.map(DoacaoResponse::de));
+        Map<Long, String> eventosPorId = carregarNomesEventos(pagina.getContent());
+        return PaginaResponse.de(pagina.map(doacao -> mapearResposta(doacao, eventosPorId)));
     }
 
     @Transactional
@@ -125,7 +130,7 @@ public class DoacaoService {
             gerarEntradaDeEstoque(doacao, produto);
         }
 
-        return DoacaoResponse.de(doacao);
+        return mapearResposta(doacao, Map.of(evento.getId(), evento.getNome()));
     }
 
     @Transactional
@@ -304,5 +309,29 @@ public class DoacaoService {
 
     private BigDecimal escala(BigDecimal valor) {
         return valor == null ? null : valor.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private Map<Long, String> carregarNomesEventos(List<Doacao> doacoes) {
+        Set<Long> ids = doacoes.stream()
+                .map(Doacao::getEventoId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, String> eventosPorId = new HashMap<>();
+        eventoRepository.findAllById(ids)
+                .forEach(evento -> eventosPorId.put(evento.getId(), evento.getNome()));
+        return eventosPorId;
+    }
+
+    private DoacaoResponse mapearResposta(Doacao doacao, Map<Long, String> eventosPorId) {
+        String eventoNome = eventosPorId.get(doacao.getEventoId());
+        if (eventoNome == null || eventoNome.isBlank()) {
+            eventoNome = "Evento não encontrado";
+        }
+        return DoacaoResponse.de(doacao, eventoNome);
     }
 }
