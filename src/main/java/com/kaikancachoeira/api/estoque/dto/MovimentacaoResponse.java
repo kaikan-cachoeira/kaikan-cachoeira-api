@@ -14,11 +14,12 @@ public record MovimentacaoResponse(
         @Schema(description = "Custo do lote movimentado") BigDecimal custoTotal,
         BigDecimal custoUnitario,
         @Schema(nullable = true) Long eventoId,
+        @Schema(nullable = true) String eventoNome,
         @Schema(nullable = true) String observacoes,
         Instant criadoEm
 ) {
 
-    public static MovimentacaoResponse de(MovimentacaoEstoque m) {
+    public static MovimentacaoResponse de(MovimentacaoEstoque m, String eventoNome) {
         return new MovimentacaoResponse(
                 m.getId(),
                 m.getEstoque().getId(),
@@ -27,6 +28,7 @@ public record MovimentacaoResponse(
                 m.getCustoTotal(),
                 m.getCustoUnitario(),
                 m.getEventoId(),
+                eventoNome,
                 m.getObservacoes(),
                 m.getCriadoEm());
     }
