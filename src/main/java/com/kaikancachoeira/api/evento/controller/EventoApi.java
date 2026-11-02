@@ -41,7 +41,14 @@ public interface EventoApi {
             ),
             @ApiResponse(
                     responseCode = "400",
-                    description = "Parâmetros de consulta inválidos"
+                    description = "Parâmetros de consulta inválidos",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErroResponse.class),
+                            examples = @ExampleObject(name = "Parâmetro inválido", value = """
+                    {"codigo": "REQUISICAO_INVALIDA","mensagem": "Valor inválido para o parâmetro","campos": [{"campo": "tipoEvento","mensagem": "Valor inválido"}]}
+                    """)
+                    )
             )
     })
     ResponseEntity<List<EventoResponse>> listar(
@@ -204,9 +211,15 @@ public interface EventoApi {
                     description = "Evento não pode ser excluído devido ao status ou a registros associados",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Conflito de negócio", value = """
-                        {"codigo": "CONFLITO_DADOS","mensagem": "A operação viola uma regra de integridade dos dados.","campos": []}
-                        """)
+                            schema = @Schema(implementation = ErroResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "Evento já iniciado", value = """
+                            {"codigo": "EXCLUSAO_EVENTO_STATUS_INVALIDO","mensagem": "Só é possível excluir eventos que ainda não foram iniciados.","campos": []}
+                            """),
+                                    @ExampleObject(name = "Evento com registros", value = """
+                            {"codigo": "EXCLUSAO_EVENTO_COM_REGISTROS","mensagem": "Não é possível excluir um evento que possui vendas, doações, movimentações de estoque ou lançamentos de caixa.","campos": []}
+                            """)
+                            }
                     )
             )
     })
@@ -232,9 +245,18 @@ public interface EventoApi {
                         {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Evento não encontrado: 123","campos": []}
                         """))),
             @ApiResponse(responseCode = "409", description = "Transição inválida, outro evento em andamento ou desfazer início bloqueado",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Conflito de negócio", value = """
-                        {"codigo": "EVENTO_EM_ANDAMENTO_EXISTENTE","mensagem": "Já existe um evento em andamento.","campos": []}
-                        """)))
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "Outro evento em andamento", value = """
+                            {"codigo": "EVENTO_EM_ANDAMENTO_EXISTENTE","mensagem": "Já existe um evento em andamento.","campos": []}
+                            """),
+                                    @ExampleObject(name = "Desfazer início bloqueado", value = """
+                            {"codigo": "DESFAZER_INICIO_BLOQUEADO","mensagem": "Não é possível desfazer o início: já existem vendas ou lançamentos de caixa.","campos": []}
+                            """),
+                                    @ExampleObject(name = "Transição inválida", value = """
+                            {"codigo": "TRANSICAO_EVENTO_INVALIDA","mensagem": "Não é permitido transicionar o evento de EM_ANDAMENTO para NAO_INICIADO","campos": []}
+                            """)
+                            }))
     })
     ResponseEntity<Void> alterarStatus(
             @Parameter(description = "ID do evento", required = true) @PathVariable Long id,

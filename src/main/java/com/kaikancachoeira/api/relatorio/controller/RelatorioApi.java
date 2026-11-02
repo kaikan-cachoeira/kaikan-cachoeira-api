@@ -48,9 +48,10 @@ public interface RelatorioApi {
                     description = "Evento não iniciado",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Conflito de negócio", value = """
-                        {"codigo": "EVENTO_NAO_INICIADO","mensagem": "Evento não iniciado.","campos": []}
-                        """)
+                            schema = @Schema(implementation = ErroResponse.class),
+                            examples = @ExampleObject(name = "Conflito de negócio", value = """
+                    {"codigo": "EVENTO_NAO_INICIADO","mensagem": "O relatório só fica disponível depois que o evento é iniciado.","campos": []}
+                    """)
                     )
             )
     })

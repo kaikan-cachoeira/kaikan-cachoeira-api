@@ -71,9 +71,10 @@ public interface VendaApi {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Histórico retornado"),
             @ApiResponse(responseCode = "400", description = "Paginação inválida",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Parâmetro inválido", value = """
-                        {"codigo": "REQUISICAO_INVALIDA","mensagem": "Valor inválido para o parâmetro","campos": [{"campo": "page","mensagem": "Valor inválido"}]}
-                        """))),
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class),
+                            examples = @ExampleObject(name = "Parâmetro inválido", value = """
+                    {"codigo": "VALIDACAO","mensagem": "Dados inválidos","campos": [{"campo": "page","mensagem": "A página não pode ser negativa"}]}
+                    """))),
             @ApiResponse(responseCode = "404", description = "Evento não encontrado",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Recurso não encontrado", value = """
                         {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Evento não encontrado: 123","campos": []}

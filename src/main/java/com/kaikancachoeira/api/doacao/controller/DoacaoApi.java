@@ -141,9 +141,10 @@ public interface DoacaoApi {
                     description = "Quantidade menor que a já consumida do lote",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Conflito de negócio", value = """
-                        {"codigo": "CONFLITO_DADOS","mensagem": "A operação viola uma regra de integridade dos dados.","campos": []}
-                        """)
+                            schema = @Schema(implementation = ErroResponse.class),
+                            examples = @ExampleObject(name = "Quantidade abaixo do consumido", value = """
+                    {"codigo": "QUANTIDADE_ABAIXO_DO_CONSUMIDO","mensagem": "A quantidade não pode ser menor que a já consumida do lote.","campos": []}
+                    """)
                     )
             )
     })
