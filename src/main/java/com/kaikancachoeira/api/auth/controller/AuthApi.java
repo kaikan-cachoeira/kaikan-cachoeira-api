@@ -55,7 +55,7 @@ public interface AuthApi {
             @ApiResponse(responseCode = "401", description = "Refresh token inválido, revogado ou expirado",
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Refresh token inválido", value = """
-                        {"codigo": "TOKEN_INVALIDO","mensagem": "Refresh token inválido, revogado ou expirado","campos": []}
+                        {"codigo": "REFRESH_TOKEN_INVALIDO_OU_EXPIRADO","mensagem": "Refresh token inválido, revogado ou expirado","campos": []}
                         """)))
     })
     ResponseEntity<RefreshTokenResponse> refresh(RefreshTokenRequest request);

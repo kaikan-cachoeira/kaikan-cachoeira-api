@@ -25,14 +25,28 @@ public interface ProdutoEventoApi {
         q pesquisa pelo nome; categoria filtra pelo nome guardado no snapshot e aceita repetição.
         Exige EVENTOS_MENU ou CARDAPIO_EVENTO_LEITURA.
         """)
-    @ApiResponse(responseCode = "200", description = "Cardápio retornado")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Cardápio retornado"),
+            @ApiResponse(responseCode = "404", description = "Evento não encontrado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class),
+                            examples = @ExampleObject(name = "Recurso não encontrado", value = """
+                    {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Evento não encontrado: 123","campos": []}
+                    """)))
+    })
     ResponseEntity<List<ProdutoEventoResponse>> listar(
             @Parameter(description = "ID do evento", required = true) Long eventoId,
             @Parameter(description = "Texto para pesquisa pelo nome") String q,
             @Parameter(description = "Nomes de categoria (aceita repetição)") List<String> categoria);
 
     @Operation(summary = "Lista categorias do cardápio", description = "Retorna os nomes distintos das categorias do cardápio. Exige EVENTOS_MENU ou CARDAPIO_EVENTO_LEITURA.")
-    @ApiResponse(responseCode = "200", description = "Categorias retornadas")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Categorias retornadas"),
+            @ApiResponse(responseCode = "404", description = "Evento não encontrado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class),
+                            examples = @ExampleObject(name = "Recurso não encontrado", value = """
+                    {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Evento não encontrado: 123","campos": []}
+                    """)))
+    })
     ResponseEntity<List<String>> listarCategorias(
             @Parameter(description = "ID do evento", required = true) Long eventoId);
 
@@ -51,10 +65,22 @@ public interface ProdutoEventoApi {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Recurso não encontrado", value = """
                         {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Evento não encontrado: 123","campos": []}
                         """))),
-            @ApiResponse(responseCode = "409", description = "Evento já iniciado, reunião ou produto/nome duplicado no evento",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Conflito de negócio", value = """
-                        {"codigo": "EVENTO_JA_INICIADO","mensagem": "Só é possível alterar com o evento no status NAO_INICIADO.","campos": []}
-                        """)))
+            @ApiResponse(responseCode = "409", description = "Evento já iniciado, reunião, ou produto/nome duplicado no evento",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "Evento já iniciado", value = """
+                            {"codigo": "EVENTO_JA_INICIADO","mensagem": "Só é possível alterar com o evento no status NAO_INICIADO.","campos": []}
+                            """),
+                                    @ExampleObject(name = "Reunião sem cardápio", value = """
+                            {"codigo": "REUNIAO_SEM_CARDAPIO","mensagem": "Reuniões não possuem cardápio.","campos": []}
+                            """),
+                                    @ExampleObject(name = "Produto duplicado", value = """
+                            {"codigo": "PRODUTO_JA_NO_EVENTO","mensagem": "Este produto já está no cardápio do evento.","campos": []}
+                            """),
+                                    @ExampleObject(name = "Nome duplicado", value = """
+                            {"codigo": "NOME_DUPLICADO","mensagem": "Já existe um item com este nome no cardápio deste evento.","campos": []}
+                            """)
+                            }))
     })
     ResponseEntity<ProdutoEventoResponse> adicionar(
             @Parameter(description = "ID do evento", required = true) Long eventoId,
@@ -85,9 +111,10 @@ public interface ProdutoEventoApi {
                         {"codigo": "VALIDACAO","mensagem": "Dados inválidos","campos": [{"campo": "origem","mensagem": "Origem deve ser ESTOQUE ou PRODUZIDO"}]}
                         """))),
             @ApiResponse(responseCode = "404", description = "Item não encontrado neste evento",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Recurso não encontrado", value = """
-                        {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Evento não encontrado: 123","campos": []}
-                        """))),
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class),
+                            examples = @ExampleObject(name = "Recurso não encontrado", value = """
+                    {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Produto do evento não encontrado: 123","campos": []}
+                    """))),
             @ApiResponse(responseCode = "409", description = "Evento já iniciado ou nome duplicado",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Conflito de negócio", value = """
                         {"codigo": "EVENTO_JA_INICIADO","mensagem": "Só é possível alterar com o evento no status NAO_INICIADO.","campos": []}
@@ -103,9 +130,10 @@ public interface ProdutoEventoApi {
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Item removido"),
             @ApiResponse(responseCode = "404", description = "Item não encontrado neste evento",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Recurso não encontrado", value = """
-                        {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Evento não encontrado: 123","campos": []}
-                        """))),
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class),
+                            examples = @ExampleObject(name = "Recurso não encontrado", value = """
+                    {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Produto do evento não encontrado: 123","campos": []}
+                    """))),
             @ApiResponse(responseCode = "409", description = "Evento já iniciado ou item já vendido",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Conflito de negócio", value = """
                         {"codigo": "EVENTO_JA_INICIADO","mensagem": "Só é possível alterar com o evento no status NAO_INICIADO.","campos": []}

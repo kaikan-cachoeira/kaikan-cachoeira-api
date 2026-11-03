@@ -49,10 +49,16 @@ public interface DescontoApi {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Recurso não encontrado", value = """
                         {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Produto não encontrado: 123","campos": []}
                         """))),
-            @ApiResponse(responseCode = "409", description = "Evento não está em andamento",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Conflito de negócio", value = """
-                        {"codigo": "EVENTO_NAO_EM_ANDAMENTO","mensagem": "O evento não está em andamento.","campos": []}
-                        """)))
+            @ApiResponse(responseCode = "409", description = "Evento não está em andamento ou produto já tem desconto aplicado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "Evento não em andamento", value = """
+                            {"codigo": "EVENTO_NAO_EM_ANDAMENTO","mensagem": "O evento não está em andamento.","campos": []}
+                            """),
+                                    @ExampleObject(name = "Desconto já aplicado", value = """
+                            {"codigo": "DESCONTO_JA_APLICADO","mensagem": "O produto já tem desconto aplicado. Remova o desconto antes de aplicar outro.","campos": []}
+                            """)
+                            }))
     })
     ResponseEntity<DescontoProdutoResponse> remover(
             @Parameter(description = "ID do evento", required = true) Long eventoId,
