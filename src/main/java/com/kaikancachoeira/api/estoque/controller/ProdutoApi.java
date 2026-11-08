@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -95,6 +96,51 @@ public interface ProdutoApi {
                     required = true
             )
             @RequestBody @Valid ProdutoRequest request
+    );
+
+    @Operation(
+            summary = "Cadastra produto com foto",
+            description = """
+            Cria um produto e, opcionalmente, sua foto em uma única requisição multipart/form-data.
+            A parte produto contém os dados em JSON (Content-Type application/json) e a parte arquivo
+            contém a imagem (JPG, PNG ou WEBP). Se a imagem for inválida, nada é cadastrado.
+            """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Produto criado"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Dados ou arquivo inválidos",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class
+                            ),
+                            examples = @ExampleObject(name = "Arquivo inválido", value = """
+                                    {"codigo": "ARQUIVO_INVALIDO","mensagem": "Formato aceito: JPG, PNG ou WEBP.","campos": []}
+                                    """)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Já existe um produto com este nome",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class
+                            ),
+                            examples = @ExampleObject(name = "Produto duplicado", value = """
+                                    {"codigo": "PRODUTO_DUPLICADO","mensagem": "Já existe um produto com este nome.","campos": []}
+                                    """)
+                    )
+            )
+    })
+    ResponseEntity<ProdutoResponse> criarComFoto(
+            @Parameter(description = "Dados para cadastro do produto (JSON)", required = true)
+            @RequestPart("produto") @Valid ProdutoRequest request,
+
+            @Parameter(description = "Foto do produto (opcional)")
+            @RequestPart(value = "arquivo", required = false) MultipartFile arquivo
     );
 
     @Operation(

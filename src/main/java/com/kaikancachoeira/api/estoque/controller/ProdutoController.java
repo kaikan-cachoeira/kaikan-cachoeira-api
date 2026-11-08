@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -53,10 +54,19 @@ public class ProdutoController implements ProdutoApi {
     }
 
     @Override
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasAuthority('ESTOQUE_MENU')")
     public ResponseEntity<ProdutoResponse> criar(@RequestBody @Valid ProdutoRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.criar(request));
+    }
+
+    @Override
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority('ESTOQUE_MENU')")
+    public ResponseEntity<ProdutoResponse> criarComFoto(
+            @RequestPart("produto") @Valid ProdutoRequest request,
+            @RequestPart(value = "arquivo", required = false) MultipartFile arquivo) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.criar(request, arquivo));
     }
 
     @Override

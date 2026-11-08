@@ -27,15 +27,12 @@ public class ArmazenamentoService {
         this.diretorio = Paths.get(diretorio).toAbsolutePath().normalize();
     }
 
-    public String salvarImagem(MultipartFile arquivo) {
-        if (arquivo == null || arquivo.isEmpty()) {
-            throw new RequisicaoInvalidaException("ARQUIVO_OBRIGATORIO", "Arquivo não enviado.");
-        }
+    public void validarImagem(MultipartFile arquivo) {
+        extensaoValida(arquivo);
+    }
 
-        String extensao = EXTENSOES.get(arquivo.getContentType());
-        if (extensao == null) {
-            throw new RequisicaoInvalidaException("ARQUIVO_INVALIDO", "Formato aceito: JPG, PNG ou WEBP.");
-        }
+    public String salvarImagem(MultipartFile arquivo) {
+        String extensao = extensaoValida(arquivo);
 
         String chave = UUID.randomUUID() + extensao;
         try {
@@ -45,6 +42,18 @@ public class ArmazenamentoService {
             throw new UncheckedIOException(e);
         }
         return chave;
+    }
+
+    private String extensaoValida(MultipartFile arquivo) {
+        if (arquivo == null || arquivo.isEmpty()) {
+            throw new RequisicaoInvalidaException("ARQUIVO_OBRIGATORIO", "Arquivo não enviado.");
+        }
+
+        String extensao = EXTENSOES.get(arquivo.getContentType());
+        if (extensao == null) {
+            throw new RequisicaoInvalidaException("ARQUIVO_INVALIDO", "Formato aceito: JPG, PNG ou WEBP.");
+        }
+        return extensao;
     }
 
     public void remover(String chave) {
