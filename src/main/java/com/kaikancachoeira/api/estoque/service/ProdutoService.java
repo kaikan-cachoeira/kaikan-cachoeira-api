@@ -14,6 +14,8 @@ import com.kaikancachoeira.api.estoque.repository.EstoqueRepository;
 import com.kaikancachoeira.api.estoque.repository.ProdutoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -57,6 +59,16 @@ public class ProdutoService {
 
     @Transactional
     public ProdutoResponse criar(ProdutoRequest request) {
+        return criar(request, null);
+    }
+
+    @Transactional
+    public ProdutoResponse criar(ProdutoRequest request, MultipartFile foto) {
+        boolean temFoto = foto != null && !foto.isEmpty();
+        if (temFoto) {
+            armazenamentoService.validarImagem(foto);
+        }
+
         String nome = request.nome().trim();
 
         if (produtoRepository.existsByNomeIgnoreCase(nome)) {
@@ -65,6 +77,12 @@ public class ProdutoService {
 
         Produto produto = new Produto();
         preencher(produto, nome, request);
+
+        if (temFoto) {
+            String chave = armazenamentoService.salvarImagem(foto);
+            removerArquivoSeNaoConfirmar(chave);
+            produto.setFotoUrl(chave);
+        }
 
         return ProdutoResponse.de(produtoRepository.save(produto));
     }
@@ -110,6 +128,20 @@ public class ProdutoService {
             produtoRepository.delete(produto);
         }
         return true;
+    }
+
+    private void removerArquivoSeNaoConfirmar(String chave) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) {
+                    armazenamentoService.remover(chave);
+                }
+            }
+        });
     }
 
     private Produto buscarAtivo(Long id) {
