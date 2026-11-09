@@ -855,15 +855,32 @@ paths:
         required: false
         schema:
           type: boolean
+      - name: page
+        in: query
+        description: Índice da página (começando em 0)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+          minimum: 0
+      - name: size
+        in: query
+        description: Tamanho da página
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
       responses:
         "200":
           description: Lista de produtos retornada
           content:
             '*/*':
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ProdutoResponse"
+                $ref: "#/components/schemas/PaginaResponseProdutoResponse"
     post:
       tags:
       - Produtos
@@ -1164,15 +1181,32 @@ paths:
           type: string
           format: date-time
         example: 2026-10-31T23:59:59Z
+      - name: page
+        in: query
+        description: Índice da página (começando em 0)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+          minimum: 0
+      - name: size
+        in: query
+        description: Tamanho da página
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
       responses:
         "200":
           description: Lista de eventos retornada
           content:
             '*/*':
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/EventoResponse"
+                $ref: "#/components/schemas/PaginaResponseEventoResponse"
         "400":
           description: Parâmetros de consulta inválidos
           content:
@@ -1292,6 +1326,7 @@ paths:
           type: integer
           format: int32
           default: 0
+          minimum: 0
       - name: size
         in: query
         description: Registros por página (1 a 100)
@@ -1300,6 +1335,8 @@ paths:
           type: integer
           format: int32
           default: 20
+          maximum: 100
+          minimum: 1
       responses:
         "200":
           description: Histórico retornado
@@ -1483,15 +1520,32 @@ paths:
           type: array
           items:
             type: string
+      - name: page
+        in: query
+        description: Índice da página (começando em 0)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+          minimum: 0
+      - name: size
+        in: query
+        description: Tamanho da página
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
       responses:
         "200":
           description: Cardápio retornado
           content:
             '*/*':
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ProdutoEventoResponse"
+                $ref: "#/components/schemas/PaginaResponseProdutoEventoResponse"
         "404":
           description: Evento não encontrado
           content:
@@ -1666,15 +1720,32 @@ paths:
         schema:
           type: integer
           format: int64
+      - name: page
+        in: query
+        description: Índice da página (começando em 0)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+          minimum: 0
+      - name: size
+        in: query
+        description: Tamanho da página
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
       responses:
         "200":
           description: Custos retornados
           content:
             '*/*':
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/CustoEventoResponse"
+                $ref: "#/components/schemas/PaginaResponseCustoEventoResponse"
         "404":
           description: Evento não encontrado
           content:
@@ -2098,6 +2169,7 @@ paths:
         - Chamadas concorrentes com o mesmo token: apenas uma tem sucesso.
       operationId: refresh
       requestBody:
+        description: Refresh token
         content:
           application/json:
             schema:
@@ -2138,6 +2210,7 @@ paths:
         - Se a conta estava `PENDENTE`, passa para `ATIVO`.
       operationId: redefinirSenha
       requestBody:
+        description: Dados para redefinição de senha
         content:
           application/json:
             schema:
@@ -2183,6 +2256,7 @@ paths:
         - Este fluxo também define a primeira senha de contas `PENDENTE`.
       operationId: recuperarSenha
       requestBody:
+        description: Dados para recuperação de senha
         content:
           application/json:
             schema:
@@ -2216,6 +2290,7 @@ paths:
         \ até expirar, então o front deve descartá-lo."
       operationId: logout
       requestBody:
+        description: Refresh token a revogar
         content:
           application/json:
             schema:
@@ -2239,6 +2314,7 @@ paths:
         - Só o hash do refresh token é persistido; o valor bruto é devolvido apenas aqui.
       operationId: login
       requestBody:
+        description: Credenciais de login
         content:
           application/json:
             schema:
@@ -2696,15 +2772,32 @@ paths:
         required: false
         schema:
           type: string
+      - name: page
+        in: query
+        description: Índice da página (começando em 0)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+          minimum: 0
+      - name: size
+        in: query
+        description: Tamanho da página
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
       responses:
         "200":
           description: Fiados retornados
           content:
             '*/*':
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/FiadoResponse"
+                $ref: "#/components/schemas/PaginaResponseFiadoResponse"
         "400":
           description: Situação inválida
           content:
@@ -3882,6 +3975,35 @@ components:
         exigeCusto:
           type: boolean
           description: "Se true, a entrada exige custoTotal"
+    PaginaResponseProdutoResponse:
+      type: object
+      description: Página de resultados. page começa em 0
+      properties:
+        itens:
+          type: array
+          description: Registros da página
+          items:
+            $ref: "#/components/schemas/ProdutoResponse"
+        page:
+          type: integer
+          format: int32
+          description: "Índice da página, começando em zero"
+          example: 0
+        size:
+          type: integer
+          format: int32
+          description: Tamanho da página
+          example: 20
+        totalItens:
+          type: integer
+          format: int64
+          description: Total de registros
+          example: 57
+        totalPaginas:
+          type: integer
+          format: int32
+          description: Total de páginas
+          example: 3
     PaginaResponseMovimentacaoResponse:
       type: object
       description: Página de resultados. page começa em 0
@@ -3935,6 +4057,35 @@ components:
           type: string
           format: date-time
           description: Data de entrada do lote
+    PaginaResponseEventoResponse:
+      type: object
+      description: Página de resultados. page começa em 0
+      properties:
+        itens:
+          type: array
+          description: Registros da página
+          items:
+            $ref: "#/components/schemas/EventoResponse"
+        page:
+          type: integer
+          format: int32
+          description: "Índice da página, começando em zero"
+          example: 0
+        size:
+          type: integer
+          format: int32
+          description: Tamanho da página
+          example: 20
+        totalItens:
+          type: integer
+          format: int64
+          description: Total de registros
+          example: 57
+        totalPaginas:
+          type: integer
+          format: int32
+          description: Total de páginas
+          example: 3
     EventoDetalheResponse:
       type: object
       properties:
@@ -4418,6 +4569,93 @@ components:
           format: date-time
           description: Data e hora do cancelamento em ISO-8601; nulo se a venda não
             foi cancelada.
+    PaginaResponseProdutoEventoResponse:
+      type: object
+      description: Página de resultados. page começa em 0
+      properties:
+        itens:
+          type: array
+          description: Registros da página
+          items:
+            $ref: "#/components/schemas/ProdutoEventoResponse"
+        page:
+          type: integer
+          format: int32
+          description: "Índice da página, começando em zero"
+          example: 0
+        size:
+          type: integer
+          format: int32
+          description: Tamanho da página
+          example: 20
+        totalItens:
+          type: integer
+          format: int64
+          description: Total de registros
+          example: 57
+        totalPaginas:
+          type: integer
+          format: int32
+          description: Total de páginas
+          example: 3
+    PaginaResponseFiadoResponse:
+      type: object
+      description: Página de resultados. page começa em 0
+      properties:
+        itens:
+          type: array
+          description: Registros da página
+          items:
+            $ref: "#/components/schemas/FiadoResponse"
+        page:
+          type: integer
+          format: int32
+          description: "Índice da página, começando em zero"
+          example: 0
+        size:
+          type: integer
+          format: int32
+          description: Tamanho da página
+          example: 20
+        totalItens:
+          type: integer
+          format: int64
+          description: Total de registros
+          example: 57
+        totalPaginas:
+          type: integer
+          format: int32
+          description: Total de páginas
+          example: 3
+    PaginaResponseCustoEventoResponse:
+      type: object
+      description: Página de resultados. page começa em 0
+      properties:
+        itens:
+          type: array
+          description: Registros da página
+          items:
+            $ref: "#/components/schemas/CustoEventoResponse"
+        page:
+          type: integer
+          format: int32
+          description: "Índice da página, começando em zero"
+          example: 0
+        size:
+          type: integer
+          format: int32
+          description: Tamanho da página
+          example: 20
+        totalItens:
+          type: integer
+          format: int64
+          description: Total de registros
+          example: 57
+        totalPaginas:
+          type: integer
+          format: int32
+          description: Total de páginas
+          example: 3
     CaixaResponse:
       type: object
       description: "Resposta da consulta do caixa, com resumo financeiro e lançamentos\
