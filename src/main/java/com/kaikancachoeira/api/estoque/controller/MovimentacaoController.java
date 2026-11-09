@@ -6,9 +6,6 @@ import com.kaikancachoeira.api.estoque.dto.MovimentacaoResponse;
 import com.kaikancachoeira.api.estoque.dto.MovimentacaoResultadoResponse;
 import com.kaikancachoeira.api.estoque.dto.MovimentarEstoqueRequest;
 import com.kaikancachoeira.api.estoque.service.MovimentacaoService;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,7 +26,7 @@ public class MovimentacaoController implements MovimentacaoApi {
 
     @PostMapping("/produtos/{id}/movimentacoes")
     public ResponseEntity<MovimentacaoResultadoResponse> movimentar(@PathVariable Long id,
-                                                                    @RequestBody @Valid MovimentarEstoqueRequest request) {
+                                                                    @RequestBody MovimentarEstoqueRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.movimentar(id, request));
     }
 
@@ -41,8 +38,8 @@ public class MovimentacaoController implements MovimentacaoApi {
             @RequestParam(required = false) Long eventoId,
             @RequestParam(required = false) Instant dataInicio,
             @RequestParam(required = false) Instant dataFim,
-            @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(service.historicoDoProduto(id, tipoMovimentacaoId, eventoId,
                 dataInicio, dataFim, page, size));
     }
@@ -57,8 +54,8 @@ public class MovimentacaoController implements MovimentacaoApi {
     @GetMapping("/estoques/{id}/movimentacoes")
     public ResponseEntity<PaginaResponse<MovimentacaoResponse>> historicoDoLote(
             @PathVariable Long id,
-            @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(service.historicoDoLote(id, page, size));
     }
 }

@@ -9,11 +9,18 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+ 
+ 
+import jakarta.validation.Valid;
 
+import com.kaikancachoeira.api.common.dto.PaginaResponse;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.List;
 
 @Tag(name = "Fiados", description = "Consulta e quitação de fichas vendidas a prazo.")
@@ -31,9 +38,10 @@ public interface FiadoApi {
                         {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Evento não encontrado: 123","campos": []}
                         """)))
     })
-    ResponseEntity<List<FiadoResponse>> listar(
-            @Parameter(description = "ID do evento", required = true) Long eventoId,
-            @Parameter(description = "pendente ou quitado") String situacao);
+    ResponseEntity<PaginaResponse<FiadoResponse>> listar(@Parameter(description = "ID do evento", required = true) Long eventoId,
+            @Parameter(description = "pendente ou quitado") String situacao,
+            @Parameter(description = "Índice da página (começando em 0)") @Min(0) int page,
+            @Parameter(description = "Tamanho da página") @Min(1) @Max(100) int size);
 
     @Operation(summary = "Quita fiado", description = """
         Marca o fiado como quitado e gera um lançamento QUITACAO_FIADO na forma de pagamento informada
@@ -58,6 +66,6 @@ public interface FiadoApi {
     ResponseEntity<QuitacaoResponse> quitar(
             @Parameter(description = "ID do evento", required = true) Long eventoId,
             @Parameter(description = "ID do fiado", required = true) Long fiadoId,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Forma de pagamento da quitação", required = true)
-            QuitacaoRequest request);
+            @RequestBody(description = "Forma de pagamento da quitação", required = true)
+            @Valid QuitacaoRequest request);
 }

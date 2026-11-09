@@ -5,6 +5,8 @@ import com.kaikancachoeira.api.venda.dto.DescontoProdutoResponse;
 import com.kaikancachoeira.api.venda.dto.DescontoRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -39,8 +41,8 @@ public interface DescontoApi {
     ResponseEntity<DescontoProdutoResponse> aplicar(
             @Parameter(description = "ID do evento", required = true) Long eventoId,
             @Parameter(description = "ID do produto no cardápio do evento", required = true) Long produtoEventoId,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Novo preço do produto", required = true)
-            DescontoRequest request);
+            @RequestBody(description = "Novo preço do produto", required = true)
+            @Valid DescontoRequest request);
 
     @Operation(summary = "Remove desconto de um produto", description = "Zera o desconto. Se não houver desconto aplicado, não altera nada. Exige VENDAS_MENU.")
     @ApiResponses({

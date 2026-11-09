@@ -1,10 +1,10 @@
 package com.kaikancachoeira.api.evento.controller;
 
+import com.kaikancachoeira.api.common.dto.PaginaResponse;
 import com.kaikancachoeira.api.evento.dto.FotoEventoResponse;
 import com.kaikancachoeira.api.evento.dto.ProdutoEventoRequest;
 import com.kaikancachoeira.api.evento.dto.ProdutoEventoResponse;
 import com.kaikancachoeira.api.evento.service.ProdutoEventoService;
-import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -27,12 +27,14 @@ public class ProdutoEventoController implements ProdutoEventoApi {
 
     @GetMapping
     @PreAuthorize("hasAnyAuthority('EVENTOS_MENU', 'CARDAPIO_EVENTO_LEITURA')")
-    public ResponseEntity<List<ProdutoEventoResponse>> listar(
+    public ResponseEntity<PaginaResponse<ProdutoEventoResponse>> listar(
             @PathVariable Long eventoId,
             @RequestParam(required = false) String q,
-            @RequestParam(required = false) List<String> categoria
+            @RequestParam(required = false) List<String> categoria,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
-        List<ProdutoEventoResponse> response = service.listar(eventoId, q, categoria);
+        PaginaResponse<ProdutoEventoResponse> response = service.listar(eventoId, q, categoria, page, size);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -52,7 +54,7 @@ public class ProdutoEventoController implements ProdutoEventoApi {
     @PostMapping
     public ResponseEntity<ProdutoEventoResponse> adicionar(
             @PathVariable Long eventoId,
-            @RequestBody @Valid ProdutoEventoRequest request
+            @RequestBody ProdutoEventoRequest request
     ) {
         ProdutoEventoResponse response = service.adicionar(eventoId, request);
 
@@ -74,7 +76,7 @@ public class ProdutoEventoController implements ProdutoEventoApi {
     public ResponseEntity<ProdutoEventoResponse> atualizar(
             @PathVariable Long eventoId,
             @PathVariable Long produtoEventoId,
-            @RequestBody @Valid ProdutoEventoRequest request
+            @RequestBody ProdutoEventoRequest request
     ) {
         return ResponseEntity.ok(service.atualizar(eventoId, produtoEventoId, request));
     }

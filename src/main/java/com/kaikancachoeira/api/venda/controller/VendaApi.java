@@ -11,12 +11,16 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 
 import java.time.Instant;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 
 @Tag(name = "Vendas", description = "Registro, cancelamento e histórico de vendas do evento em andamento.")
 public interface VendaApi {
@@ -41,8 +45,8 @@ public interface VendaApi {
     })
     ResponseEntity<VendaResponse> registrar(
             @Parameter(description = "ID do evento", required = true) Long eventoId,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Itens e valor final da venda", required = true)
-            VendaRequest request);
+            @RequestBody(description = "Itens e valor final da venda", required = true)
+            @Valid VendaRequest request);
 
     @Operation(summary = "Cancela venda", description = """
         Cancelamento definitivo. Gera movimentações ESTORNO_VENDA devolvendo a quantidade ao lote de origem.
@@ -86,8 +90,8 @@ public interface VendaApi {
             @Parameter(description = "Início do intervalo (ISO-8601)") Instant dataHoraInicio,
             @Parameter(description = "Fim do intervalo (ISO-8601)") Instant dataHoraFim,
             @Parameter(description = "Filtra por situação: true canceladas, false ativas, ausente todas") Boolean cancelada,
-            @Parameter(description = "Índice da página, começando em zero") int page,
-            @Parameter(description = "Registros por página (1 a 100)") int size);
+            @Parameter(description = "Índice da página, começando em zero") @Min(0) int page,
+            @Parameter(description = "Registros por página (1 a 100)") @Min(1) @Max(100) int size);
 
     @Operation(summary = "Detalha venda", description = "Retorna os itens, descontos e situação de uma venda. Exige EVENTOS_MENU.")
     @ApiResponses({

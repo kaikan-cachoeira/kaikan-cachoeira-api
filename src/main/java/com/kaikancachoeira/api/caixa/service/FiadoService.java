@@ -10,6 +10,7 @@ import com.kaikancachoeira.api.caixa.entity.PagamentoCaixa;
 import com.kaikancachoeira.api.caixa.entity.TipoLancamento;
 import com.kaikancachoeira.api.caixa.repository.FiadoRepository;
 import com.kaikancachoeira.api.caixa.repository.PagamentoCaixaRepository;
+import com.kaikancachoeira.api.common.dto.PaginaResponse;
 import com.kaikancachoeira.api.common.exception.ConflitoException;
 import com.kaikancachoeira.api.common.exception.RecursoNaoEncontradoException;
 import com.kaikancachoeira.api.common.exception.ValidacaoException;
@@ -44,10 +45,19 @@ public class FiadoService {
     }
 
     @Transactional(readOnly = true)
-    public List<FiadoResponse> listar(Long eventoId, String situacao) {
+    public PaginaResponse<FiadoResponse> listar(Long eventoId, String situacao, int page, int size) {
         eventoGuard.buscar(eventoId);
         Boolean quitado = converterSituacao(situacao);
-        return fiadoRepository.listar(eventoId, quitado).stream().map(FiadoResponse::de).toList();
+        java.util.List<FiadoResponse> todos = fiadoRepository.listar(eventoId, quitado).stream().map(FiadoResponse::de).toList();
+
+        int total = todos.size();
+        int from = Math.min(page * size, total);
+        int to = Math.min(from + size, total);
+
+        org.springframework.data.domain.Page<FiadoResponse> pagina = new org.springframework.data.domain.PageImpl<>(
+                todos.subList(from, to), org.springframework.data.domain.PageRequest.of(page, size), total);
+
+        return PaginaResponse.de(pagina);
     }
 
     @Transactional

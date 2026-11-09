@@ -1,10 +1,13 @@
 package com.kaikancachoeira.api.estoque.controller;
 
+import com.kaikancachoeira.api.common.dto.PaginaResponse;
 import com.kaikancachoeira.api.estoque.dto.FotoResponse;
 import com.kaikancachoeira.api.estoque.dto.ProdutoRequest;
 import com.kaikancachoeira.api.estoque.dto.ProdutoResponse;
 import com.kaikancachoeira.api.estoque.service.ProdutoService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -36,12 +39,14 @@ public class ProdutoController implements ProdutoApi {
     @Override
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ESTOQUE_MENU', 'PRODUTOS_LEITURA')")
-    public ResponseEntity<List<ProdutoResponse>> listar(
+    public ResponseEntity<PaginaResponse<ProdutoResponse>> listar(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) List<Integer> categoriaId,
-            @RequestParam(required = false) Boolean abaixoDoMinimo
+            @RequestParam(required = false) Boolean abaixoDoMinimo,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
     ) {
-        return ResponseEntity.ok(service.listar(q, categoriaId, abaixoDoMinimo));
+        return ResponseEntity.ok(service.listar(q, categoriaId, abaixoDoMinimo, page, size));
     }
 
     @Override
@@ -56,7 +61,7 @@ public class ProdutoController implements ProdutoApi {
     @Override
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasAuthority('ESTOQUE_MENU')")
-    public ResponseEntity<ProdutoResponse> criar(@RequestBody @Valid ProdutoRequest request) {
+    public ResponseEntity<ProdutoResponse> criar(@RequestBody ProdutoRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.criar(request));
     }
 
@@ -80,7 +85,7 @@ public class ProdutoController implements ProdutoApi {
     @Override
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ESTOQUE_MENU')")
-    public ResponseEntity<Void> atualizar(@PathVariable Long id, @RequestBody @Valid ProdutoRequest request) {
+    public ResponseEntity<Void> atualizar(@PathVariable Long id, @RequestBody ProdutoRequest request) {
         service.atualizar(id, request);
         return ResponseEntity.noContent().build();
     }
