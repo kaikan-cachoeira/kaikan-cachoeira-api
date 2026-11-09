@@ -5,6 +5,7 @@ import com.kaikancachoeira.api.estoque.dto.FotoResponse;
 import com.kaikancachoeira.api.estoque.dto.ProdutoRequest;
 import com.kaikancachoeira.api.estoque.dto.ProdutoResponse;
 import com.kaikancachoeira.api.estoque.service.ProdutoService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
