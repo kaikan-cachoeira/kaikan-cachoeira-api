@@ -114,14 +114,14 @@ class EventoControllerIntegrationTest extends DbIntegrationTest {
 
         listar(leitura())
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)));
+                .andExpect(jsonPath("$.itens", hasSize(2)));
     }
 
     @Test
     void listarSemEventosDeveRetornarListaVazia() throws Exception {
         listar(leitura())
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(0)));
+                .andExpect(jsonPath("$.itens", hasSize(0)));
     }
 
     @Test
@@ -133,10 +133,10 @@ class EventoControllerIntegrationTest extends DbIntegrationTest {
 
         listar(leitura())
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].nome").value("Atual"))
-                .andExpect(jsonPath("$[1].nome").value("Futuro"))
-                .andExpect(jsonPath("$[2].nome").value("Meio"))
-                .andExpect(jsonPath("$[3].nome").value("Antigo"));
+                .andExpect(jsonPath("$.itens[0].nome").value("Atual"))
+                .andExpect(jsonPath("$.itens[1].nome").value("Futuro"))
+                .andExpect(jsonPath("$.itens[2].nome").value("Meio"))
+                .andExpect(jsonPath("$.itens[3].nome").value("Antigo"));
     }
 
     @Test
@@ -144,15 +144,15 @@ class EventoControllerIntegrationTest extends DbIntegrationTest {
         insertEvento("Bingo", "EVENTO", "NAO_INICIADO");
 
         listar(leitura())
-                .andExpect(jsonPath("$[0].id").isNumber())
-                .andExpect(jsonPath("$[0].nome").value("Bingo"))
-                .andExpect(jsonPath("$[0].tipoEvento").value("EVENTO"))
-                .andExpect(jsonPath("$[0].status.codigo").value("NAO_INICIADO"))
-                .andExpect(jsonPath("$[0].status.descricao").value("Não iniciado"))
-                .andExpect(jsonPath("$[0].dataHoraInicio").isNotEmpty())
-                .andExpect(jsonPath("$[0].dataHoraEncerramento").isNotEmpty())
-                .andExpect(jsonPath("$[0].iniciadoEm").doesNotExist())
-                .andExpect(jsonPath("$[0].encerradoEm").doesNotExist());
+                .andExpect(jsonPath("$.itens[0].id").isNumber())
+                .andExpect(jsonPath("$.itens[0].nome").value("Bingo"))
+                .andExpect(jsonPath("$.itens[0].tipoEvento").value("EVENTO"))
+                .andExpect(jsonPath("$.itens[0].status.codigo").value("NAO_INICIADO"))
+                .andExpect(jsonPath("$.itens[0].status.descricao").value("Não iniciado"))
+                .andExpect(jsonPath("$.itens[0].dataHoraInicio").isNotEmpty())
+                .andExpect(jsonPath("$.itens[0].dataHoraEncerramento").isNotEmpty())
+                .andExpect(jsonPath("$.itens[0].iniciadoEm").doesNotExist())
+                .andExpect(jsonPath("$.itens[0].encerradoEm").doesNotExist());
     }
 
     @Test
@@ -161,8 +161,8 @@ class EventoControllerIntegrationTest extends DbIntegrationTest {
         insertEvento("Bingo Beneficente", "EVENTO", "NAO_INICIADO");
 
         listar(leitura(), "q", "  UNDOUKAI ")
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].nome").value("Undoukai 2026"));
+                .andExpect(jsonPath("$.itens", hasSize(1)))
+                .andExpect(jsonPath("$.itens[0].nome").value("Undoukai 2026"));
     }
 
     @Test
@@ -171,7 +171,7 @@ class EventoControllerIntegrationTest extends DbIntegrationTest {
         insertEvento("B", "EVENTO", "NAO_INICIADO", T0.plusDays(1), T0.plusDays(1).plusHours(1));
 
         listar(leitura(), "q", "   ")
-                .andExpect(jsonPath("$", hasSize(2)));
+                .andExpect(jsonPath("$.itens", hasSize(2)));
     }
 
     @Test
@@ -180,8 +180,8 @@ class EventoControllerIntegrationTest extends DbIntegrationTest {
         insertEvento("Velho", "EVENTO", "ENCERRADO", T0.plusDays(1), T0.plusDays(1).plusHours(1));
 
         listar(leitura(), "statusId", statusId("ENCERRADO").toString())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].nome").value("Velho"));
+                .andExpect(jsonPath("$.itens", hasSize(1)))
+                .andExpect(jsonPath("$.itens[0].nome").value("Velho"));
     }
 
     @Test
@@ -190,8 +190,8 @@ class EventoControllerIntegrationTest extends DbIntegrationTest {
         insertEvento("Reuniao", "REUNIAO", "NAO_INICIADO", T0.plusDays(1), T0.plusDays(1).plusHours(1));
 
         listar(leitura(), "tipoEvento", "REUNIAO")
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].nome").value("Reuniao"));
+                .andExpect(jsonPath("$.itens", hasSize(1)))
+                .andExpect(jsonPath("$.itens[0].nome").value("Reuniao"));
     }
 
     @Test
@@ -209,16 +209,16 @@ class EventoControllerIntegrationTest extends DbIntegrationTest {
         insertEvento("Dia 20", "EVENTO", "ENCERRADO", T0.plusDays(20), T0.plusDays(20).plusHours(1));
 
         listar(leitura(), "dataInicio", T0.plusDays(5).toInstant().toString())
-                .andExpect(jsonPath("$", hasSize(2)));
+                .andExpect(jsonPath("$.itens", hasSize(2)));
 
         listar(leitura(), "dataFim", T0.plusDays(15).toInstant().toString())
-                .andExpect(jsonPath("$", hasSize(2)));
+                .andExpect(jsonPath("$.itens", hasSize(2)));
 
         listar(leitura(),
                 "dataInicio", T0.plusDays(10).toInstant().toString(),
                 "dataFim", T0.plusDays(10).toInstant().toString())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].nome").value("Dia 10"));
+                .andExpect(jsonPath("$.itens", hasSize(1)))
+                .andExpect(jsonPath("$.itens[0].nome").value("Dia 10"));
     }
 
     @Test
@@ -228,8 +228,8 @@ class EventoControllerIntegrationTest extends DbIntegrationTest {
         insertEvento("Outro", "EVENTO", "NAO_INICIADO", T0.plusDays(2), T0.plusDays(2).plusHours(1));
 
         listar(leitura(), "q", "bingo", "tipoEvento", "EVENTO", "statusId", statusId("NAO_INICIADO").toString())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].nome").value("Bingo A"));
+                .andExpect(jsonPath("$.itens", hasSize(1)))
+                .andExpect(jsonPath("$.itens[0].nome").value("Bingo A"));
     }
 
     @Test
@@ -238,7 +238,7 @@ class EventoControllerIntegrationTest extends DbIntegrationTest {
 
         listar(leitura(), "q", "inexistente")
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(0)));
+                .andExpect(jsonPath("$.itens", hasSize(0)));
     }
 
     @Test

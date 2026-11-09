@@ -41,7 +41,7 @@ class CustoEventoControllerIntegrationTest extends ControllerIntegrationTest {
 
         listar(eventoId, auth("EVENTOS_MENU"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(0)));
+                .andExpect(jsonPath("$.itens", hasSize(0)));
     }
 
     @Test
@@ -52,16 +52,16 @@ class CustoEventoControllerIntegrationTest extends ControllerIntegrationTest {
 
         listar(eventoId, auth("EVENTOS_MENU"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[0].id").isNumber())
-                .andExpect(jsonPath("$[0].nome").value("Aluguel"))
-                .andExpect(jsonPath("$[0].descricao").value("Aluguel do espaço"))
-                .andExpect(jsonPath("$[0].valor").value(250.00))
-                .andExpect(jsonPath("$[0].criadoEm").isNotEmpty())
-                .andExpect(jsonPath("$[0].atualizadoEm").isNotEmpty())
-                .andExpect(jsonPath("$[1].nome").value("Limpeza"))
-                .andExpect(jsonPath("$[1].descricao").doesNotExist())
-                .andExpect(jsonPath("$[1].valor").value(120.00));
+                .andExpect(jsonPath("$.itens", hasSize(2)))
+                .andExpect(jsonPath("$.itens[0].id").isNumber())
+                .andExpect(jsonPath("$.itens[0].nome").value("Aluguel"))
+                .andExpect(jsonPath("$.itens[0].descricao").value("Aluguel do espaço"))
+                .andExpect(jsonPath("$.itens[0].valor").value(250.00))
+                .andExpect(jsonPath("$.itens[0].criadoEm").isNotEmpty())
+                .andExpect(jsonPath("$.itens[0].atualizadoEm").isNotEmpty())
+                .andExpect(jsonPath("$.itens[1].nome").value("Limpeza"))
+                .andExpect(jsonPath("$.itens[1].descricao").doesNotExist())
+                .andExpect(jsonPath("$.itens[1].valor").value(120.00));
     }
 
     @Test

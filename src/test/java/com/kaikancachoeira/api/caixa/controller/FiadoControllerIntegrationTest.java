@@ -63,10 +63,10 @@ class FiadoControllerIntegrationTest extends ControllerIntegrationTest {
 
         listar(eventoId, "")
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[0].id").isNumber())
-                .andExpect(jsonPath("$[0].nomeDevedor").value("Fulano"))
-                .andExpect(jsonPath("$[0].criadoEm").isNotEmpty());
+                .andExpect(jsonPath("$.itens", hasSize(2)))
+                .andExpect(jsonPath("$.itens[0].id").isNumber())
+                .andExpect(jsonPath("$.itens[0].nomeDevedor").value("Fulano"))
+                .andExpect(jsonPath("$.itens[0].criadoEm").isNotEmpty());
     }
 
     @Test
@@ -78,15 +78,15 @@ class FiadoControllerIntegrationTest extends ControllerIntegrationTest {
         sincronizar();
 
         listar(eventoId, "?situacao=pendente")
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].quitado").value(false))
-                .andExpect(jsonPath("$[0].valor").value(40.0))
-                .andExpect(jsonPath("$[0].formaPagamento").doesNotExist());
+                .andExpect(jsonPath("$.itens", hasSize(1)))
+                .andExpect(jsonPath("$.itens[0].quitado").value(false))
+                .andExpect(jsonPath("$.itens[0].valor").value(40.0))
+                .andExpect(jsonPath("$.itens[0].formaPagamento").doesNotExist());
         listar(eventoId, "?situacao=quitado")
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].quitado").value(true))
-                .andExpect(jsonPath("$[0].quitadoEm").isNotEmpty())
-                .andExpect(jsonPath("$[0].formaPagamento").value("PIX"));
+                .andExpect(jsonPath("$.itens", hasSize(1)))
+                .andExpect(jsonPath("$.itens[0].quitado").value(true))
+                .andExpect(jsonPath("$.itens[0].quitadoEm").isNotEmpty())
+                .andExpect(jsonPath("$.itens[0].formaPagamento").value("PIX"));
     }
 
     @Test
