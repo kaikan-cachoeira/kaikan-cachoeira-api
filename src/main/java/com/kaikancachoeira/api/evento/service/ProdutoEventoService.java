@@ -1,5 +1,6 @@
 package com.kaikancachoeira.api.evento.service;
 
+import com.kaikancachoeira.api.common.dto.PaginaResponse;
 import com.kaikancachoeira.api.common.exception.ConflitoException;
 import com.kaikancachoeira.api.common.exception.RecursoNaoEncontradoException;
 import com.kaikancachoeira.api.common.exception.RequisicaoInvalidaException;
@@ -46,15 +47,24 @@ public class ProdutoEventoService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProdutoEventoResponse> listar(Long eventoId, String q, List<String> categorias) {
+    public PaginaResponse<ProdutoEventoResponse> listar(Long eventoId, String q, List<String> categorias, int page, int size) {
         buscarEvento(eventoId);
         String texto = (q == null) ? "" : q.trim();
         List<String> cats = (categorias == null || categorias.isEmpty()) ? null : categorias;
 
-        return produtoEventoRepository.buscarPorEvento(eventoId, texto, cats).stream()
+        java.util.List<ProdutoEventoResponse> todos = produtoEventoRepository.buscarPorEvento(eventoId, texto, cats).stream()
                 .map(pe -> ProdutoEventoResponse.de(pe,
                         produtoEventoRepository.quantidadeVendida(pe.getId())))
                 .toList();
+
+        int total = todos.size();
+        int from = Math.min(page * size, total);
+        int to = Math.min(from + size, total);
+
+        org.springframework.data.domain.Page<ProdutoEventoResponse> pagina = new org.springframework.data.domain.PageImpl<>(
+                todos.subList(from, to), org.springframework.data.domain.PageRequest.of(page, size), total);
+
+        return PaginaResponse.de(pagina);
     }
 
     @Transactional(readOnly = true)

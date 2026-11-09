@@ -1,5 +1,6 @@
 package com.kaikancachoeira.api.evento.controller;
 
+import com.kaikancachoeira.api.common.dto.PaginaResponse;
 import com.kaikancachoeira.api.evento.dto.AlteracaoStatusEventoRequest;
 import com.kaikancachoeira.api.evento.dto.EventoDetalheResponse;
 import com.kaikancachoeira.api.evento.dto.EventoRequest;
@@ -13,7 +14,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
-import java.util.List;
 
 @RestController
 @RequestMapping("/eventos")
@@ -28,14 +28,16 @@ public class EventoController implements EventoApi {
     @Override
     @GetMapping
     @PreAuthorize("hasAuthority('EVENTOS_LEITURA')")
-    public ResponseEntity<List<EventoResponse>> listar(
+    public ResponseEntity<PaginaResponse<EventoResponse>> listar(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) Integer statusId,
             @RequestParam(required = false) TipoEvento tipoEvento,
             @RequestParam(required = false) Instant dataInicio,
-            @RequestParam(required = false) Instant dataFim
+            @RequestParam(required = false) Instant dataFim,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
-        List<EventoResponse> response = service.listar(q, statusId, tipoEvento, dataInicio, dataFim);
+        PaginaResponse<EventoResponse> response = service.listar(q, statusId, tipoEvento, dataInicio, dataFim, page, size);
 
         return ResponseEntity
                 .status(HttpStatus.OK)

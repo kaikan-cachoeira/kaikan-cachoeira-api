@@ -5,21 +5,23 @@ import com.kaikancachoeira.api.evento.dto.AlteracaoStatusEventoRequest;
 import com.kaikancachoeira.api.evento.dto.EventoDetalheResponse;
 import com.kaikancachoeira.api.evento.dto.EventoRequest;
 import com.kaikancachoeira.api.evento.dto.EventoResponse;
+import com.kaikancachoeira.api.common.dto.PaginaResponse;
 import com.kaikancachoeira.api.evento.enums.TipoEvento;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
-import java.util.List;
 
 @Tag(
         name = "Eventos",
@@ -51,27 +53,23 @@ public interface EventoApi {
                     )
             )
     })
-    ResponseEntity<List<EventoResponse>> listar(
-            @Parameter(description = "Texto para pesquisa de eventos")
-            @RequestParam(required = false) String q,
+    ResponseEntity<PaginaResponse<EventoResponse>> listar(
+            @Parameter(description = "Texto para pesquisa de eventos") String q,
 
-            @Parameter(description = "ID do status para filtrar os eventos")
-            @RequestParam(required = false) Integer statusId,
+            @Parameter(description = "ID do status para filtrar os eventos") Integer statusId,
 
-            @Parameter(description = "Tipo de evento para filtrar os resultados")
-            @RequestParam(required = false) TipoEvento tipoEvento,
-
+            @Parameter(description = "Tipo de evento para filtrar os resultados") TipoEvento tipoEvento,
             @Parameter(
                     description = "Data e hora inicial do período de consulta, em formato ISO 8601",
                     example = "2026-10-01T00:00:00Z"
-            )
-            @RequestParam(required = false) Instant dataInicio,
+            ) Instant dataInicio,
 
             @Parameter(
                     description = "Data e hora final do período de consulta, em formato ISO 8601",
                     example = "2026-10-31T23:59:59Z"
-            )
-            @RequestParam(required = false) Instant dataFim
+            ) Instant dataFim,
+            @Parameter(description = "Índice da página (começando em 0)") @Min(0) int page,
+            @Parameter(description = "Tamanho da página") @Min(1) @Max(100) int size
     );
 
     @Operation(
@@ -92,10 +90,7 @@ public interface EventoApi {
                     description = "Evento não encontrado"
             )
     })
-    ResponseEntity<EventoDetalheResponse> buscar(
-            @Parameter(description = "ID do evento", required = true)
-            @PathVariable Long id
-    );
+    ResponseEntity<EventoDetalheResponse> buscar(@Parameter(description = "ID do evento", required = true) Long id);
 
     @Operation(
             summary = "Cadastra evento",
@@ -132,11 +127,11 @@ public interface EventoApi {
             )
     })
     ResponseEntity<EventoResponse> criar(
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            @RequestBody(
                     description = "Dados para cadastro do evento",
                     required = true
             )
-            @RequestBody @Valid EventoRequest request
+            @Valid EventoRequest request
     );
 
     @Operation(
@@ -177,15 +172,13 @@ public interface EventoApi {
                     )
             )
     })
-    ResponseEntity<EventoResponse> atualizar(
-            @Parameter(description = "ID do evento", required = true)
-            @PathVariable Long id,
+    ResponseEntity<EventoResponse> atualizar(@Parameter(description = "ID do evento", required = true) Long id,
 
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            @RequestBody(
                     description = "Dados para atualização do evento",
                     required = true
             )
-            @RequestBody @Valid EventoRequest request
+            @Valid EventoRequest request
     );
 
     @Operation(
@@ -223,10 +216,7 @@ public interface EventoApi {
                     )
             )
     })
-    ResponseEntity<Void> excluir(
-            @Parameter(description = "ID do evento", required = true)
-            @PathVariable Long id
-    );
+    ResponseEntity<Void> excluir(@Parameter(description = "ID do evento", required = true) Long id);
 
     @Operation(summary = "Altera o status do evento", description = """
     Transições: NAO_INICIADO → EM_ANDAMENTO (preenche iniciadoEm); EM_ANDAMENTO → ENCERRADO (preenche encerradoEm e
@@ -258,9 +248,8 @@ public interface EventoApi {
                             """)
                             }))
     })
-    ResponseEntity<Void> alterarStatus(
-            @Parameter(description = "ID do evento", required = true) @PathVariable Long id,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Id do novo status e custos adicionais (opcional)", required = true)
-            @RequestBody @Valid AlteracaoStatusEventoRequest request);
+    ResponseEntity<Void> alterarStatus(@Parameter(description = "ID do evento", required = true) Long id,
+            @RequestBody(description = "Id do novo status e custos adicionais (opcional)", required = true)
+            @Valid AlteracaoStatusEventoRequest request);
 
 }

@@ -9,12 +9,17 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.kaikancachoeira.api.common.dto.PaginaResponse;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.List;
 
 @Tag(name = "Cardápio do evento", description = "Produtos do cardápio de um evento: itens do estoque e itens produzidos no evento.")
@@ -33,10 +38,12 @@ public interface ProdutoEventoApi {
                     {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Evento não encontrado: 123","campos": []}
                     """)))
     })
-    ResponseEntity<List<ProdutoEventoResponse>> listar(
+    ResponseEntity<PaginaResponse<ProdutoEventoResponse>> listar(
             @Parameter(description = "ID do evento", required = true) Long eventoId,
             @Parameter(description = "Texto para pesquisa pelo nome") String q,
-            @Parameter(description = "Nomes de categoria (aceita repetição)") List<String> categoria);
+            @Parameter(description = "Nomes de categoria (aceita repetição)") List<String> categoria,
+            @Parameter(description = "Índice da página (começando em 0)") @Min(0) int page,
+            @Parameter(description = "Tamanho da página") @Min(1) @Max(100) int size);
 
     @Operation(summary = "Lista categorias do cardápio", description = "Retorna os nomes distintos das categorias do cardápio. Exige EVENTOS_MENU ou CARDAPIO_EVENTO_LEITURA.")
     @ApiResponses({
@@ -84,8 +91,8 @@ public interface ProdutoEventoApi {
     })
     ResponseEntity<ProdutoEventoResponse> adicionar(
             @Parameter(description = "ID do evento", required = true) Long eventoId,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Dados do item do cardápio", required = true)
-            ProdutoEventoRequest request);
+            @RequestBody(description = "Dados do item do cardápio", required = true)
+            @Valid ProdutoEventoRequest request);
 
     @Operation(summary = "Envia foto do item do cardápio", description = "multipart/form-data com o campo arquivo (JPG, PNG ou WEBP). Exige EVENTOS_MENU.")
     @ApiResponses({
@@ -123,8 +130,8 @@ public interface ProdutoEventoApi {
     ResponseEntity<ProdutoEventoResponse> atualizar(
             @Parameter(description = "ID do evento", required = true) Long eventoId,
             @Parameter(description = "ID do item do cardápio", required = true) Long produtoEventoId,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Novos dados do item", required = true)
-            ProdutoEventoRequest request);
+            @RequestBody(description = "Novos dados do item", required = true)
+            @Valid ProdutoEventoRequest request);
 
     @Operation(summary = "Remove item do cardápio", description = "Só com o evento NAO_INICIADO e se o item nunca foi vendido. Exige EVENTOS_MENU.")
     @ApiResponses({

@@ -30,14 +30,14 @@ public class CategoriaController implements CategoriaApi {
 
     @Override
     @PostMapping
-    public ResponseEntity<CategoriaResponse> criar(@RequestBody @Valid CategoriaRequest request) {
+    public ResponseEntity<CategoriaResponse> criar(@RequestBody CategoriaRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.criar(request));
     }
 
     @Override
     @PutMapping("/{id}")
     public ResponseEntity<CategoriaResponse> atualizar(@PathVariable Integer id,
-                                                       @RequestBody @Valid CategoriaRequest request) {
+                                                       @RequestBody CategoriaRequest request) {
         return ResponseEntity.ok(service.atualizar(id, request));
     }
 

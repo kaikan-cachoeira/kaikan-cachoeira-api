@@ -7,7 +7,6 @@ import com.kaikancachoeira.api.caixa.dto.RegistroCaixaResponse;
 import com.kaikancachoeira.api.caixa.entity.FormaPagamento;
 import com.kaikancachoeira.api.caixa.entity.TipoLancamento;
 import com.kaikancachoeira.api.caixa.service.CaixaService;
-import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,7 +25,7 @@ public class CaixaController implements CaixaApi {
 
     @PostMapping
     public ResponseEntity<RegistroCaixaResponse> registrar(@PathVariable Long eventoId,
-                                                           @RequestBody @Valid CaixaRequest request) {
+                                                           @RequestBody CaixaRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.registrar(eventoId, request));
     }
 

@@ -1,9 +1,13 @@
 package com.kaikancachoeira.api.estoque.controller;
 
+import com.kaikancachoeira.api.common.exception.ErroResponse;
 import com.kaikancachoeira.api.estoque.dto.FotoResponse;
 import com.kaikancachoeira.api.estoque.dto.ProdutoRequest;
 import com.kaikancachoeira.api.estoque.dto.ProdutoResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import com.kaikancachoeira.api.common.dto.PaginaResponse;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -35,15 +39,14 @@ public interface ProdutoApi {
             """
     )
     @ApiResponse(responseCode = "200", description = "Lista de produtos retornada")
-    ResponseEntity<List<ProdutoResponse>> listar(
-            @Parameter(description = "Texto para pesquisa de produtos")
-            @RequestParam(required = false) String q,
+    ResponseEntity<PaginaResponse<ProdutoResponse>> listar(
+            @Parameter(description = "Texto para pesquisa de produtos") String q,
 
-            @Parameter(description = "IDs das categorias para filtrar os produtos")
-            @RequestParam(required = false) List<Integer> categoriaId,
+            @Parameter(description = "IDs das categorias para filtrar os produtos") List<Integer> categoriaId,
 
-            @Parameter(description = "Filtra produtos abaixo do estoque mínimo")
-            @RequestParam(required = false) Boolean abaixoDoMinimo
+            @Parameter(description = "Filtra produtos abaixo do estoque mínimo") Boolean abaixoDoMinimo,
+            @Parameter(description = "Índice da página (começando em 0)") @Min(0) int page,
+            @Parameter(description = "Tamanho da página") @Min(1) @Max(100) int size
     );
 
     @Operation(
@@ -59,16 +62,13 @@ public interface ProdutoApi {
                     responseCode = "404",
                     description = "Produto não encontrado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class),
+                            schema = @Schema(implementation = ErroResponse.class),
                             examples = @ExampleObject(name = "Recurso não encontrado", value = """
                                     {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Produto não encontrado: 123","campos": []}
                                     """))
             )
     })
-    ResponseEntity<ProdutoResponse> buscar(
-            @Parameter(description = "ID do produto", required = true)
-            @PathVariable Long id
-    );
+    ResponseEntity<ProdutoResponse> buscar(@Parameter(description = "ID do produto", required = true) Long id);
 
     @Operation(
             summary = "Cadastra produto",
@@ -82,7 +82,7 @@ public interface ProdutoApi {
                     content = @Content(
                             mediaType = "application/json",
                             schema = @Schema(
-                                    implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class
+                                    implementation = ErroResponse.class
                             ),
                             examples = @ExampleObject(name = "Dados inválidos", value = """
                                     {"codigo": "VALIDACAO","mensagem": "Dados inválidos","campos": [{"campo": "nome","mensagem": "Nome é obrigatório"}]}
@@ -95,7 +95,7 @@ public interface ProdutoApi {
                     description = "Dados para cadastro do produto",
                     required = true
             )
-            @RequestBody @Valid ProdutoRequest request
+            @Valid ProdutoRequest request
     );
 
     @Operation(
@@ -158,7 +158,7 @@ public interface ProdutoApi {
                     content = @Content(
                             mediaType = "application/json",
                             schema = @Schema(
-                                    implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class
+                                    implementation = ErroResponse.class
                             ),
                             examples = @ExampleObject(name = "Recurso não encontrado", value = """
                                     {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Produto não encontrado: 123","campos": []}
@@ -167,11 +167,9 @@ public interface ProdutoApi {
             )
     })
     ResponseEntity<FotoResponse> enviarFoto(
-            @Parameter(description = "ID do produto", required = true)
-            @PathVariable Long id,
+            @Parameter(description = "ID do produto", required = true) Long id,
 
-            @Parameter(description = "Arquivo da foto do produto", required = true)
-            @RequestParam("arquivo") MultipartFile arquivo
+            @Parameter(description = "Arquivo da foto do produto", required = true) MultipartFile arquivo
     );
 
     @Operation(
@@ -186,7 +184,7 @@ public interface ProdutoApi {
                     content = @Content(
                             mediaType = "application/json",
                             schema = @Schema(
-                                    implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class
+                                    implementation = ErroResponse.class
                             ),
                             examples = @ExampleObject(name = "Dados inválidos", value = """
                                     {"codigo": "VALIDACAO","mensagem": "Dados inválidos","campos": [{"campo": "nome","mensagem": "Nome é obrigatório"}]}
@@ -195,20 +193,18 @@ public interface ProdutoApi {
             ),
             @ApiResponse(responseCode = "404", description = "Produto não encontrado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class),
+                            schema = @Schema(implementation = ErroResponse.class),
                             examples = @ExampleObject(name = "Recurso não encontrado", value = """
                                     {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Produto não encontrado: 123","campos": []}
                                     """)))
     })
-    ResponseEntity<Void> atualizar(
-            @Parameter(description = "ID do produto", required = true)
-            @PathVariable Long id,
+    ResponseEntity<Void> atualizar(@Parameter(description = "ID do produto", required = true) Long id,
 
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Novos dados do produto",
                     required = true
             )
-            @RequestBody @Valid ProdutoRequest request
+            @Valid ProdutoRequest request
     );
 
     @Operation(
@@ -224,14 +220,11 @@ public interface ProdutoApi {
                     responseCode = "404",
                     description = "Produto não encontrado",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class),
+                            schema = @Schema(implementation = ErroResponse.class),
                             examples = @ExampleObject(name = "Recurso não encontrado", value = """
                                     {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Produto não encontrado: 123","campos": []}
                                     """))
             )
     })
-    ResponseEntity<Void> excluir(
-            @Parameter(description = "ID do produto", required = true)
-            @PathVariable Long id
-    );
+    ResponseEntity<Void> excluir(@Parameter(description = "ID do produto", required = true) Long id);
 }

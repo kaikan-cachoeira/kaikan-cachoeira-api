@@ -1,5 +1,6 @@
 package com.kaikancachoeira.api.evento.service;
 
+import com.kaikancachoeira.api.common.dto.PaginaResponse;
 import com.kaikancachoeira.api.common.exception.ConflitoException;
 import com.kaikancachoeira.api.common.exception.RecursoNaoEncontradoException;
 import com.kaikancachoeira.api.evento.dto.CustoEventoRequest;
@@ -10,8 +11,6 @@ import com.kaikancachoeira.api.evento.repository.CustoEventoRepository;
 import com.kaikancachoeira.api.evento.repository.EventoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class CustoEventoService {
@@ -28,16 +27,25 @@ public class CustoEventoService {
     }
 
     @Transactional(readOnly = true)
-    public List<CustoEventoResponse> listar(Long eventoId) {
+    public PaginaResponse<CustoEventoResponse> listar(Long eventoId, int page, int size) {
         eventoRepository.findById(eventoId)
                 .orElseThrow(() ->
                         RecursoNaoEncontradoException.de("Evento", eventoId)
                 );
 
-        return custoEventoRepository.findByEventoIdOrderById(eventoId)
+        java.util.List<CustoEventoResponse> todos = custoEventoRepository.findByEventoIdOrderById(eventoId)
                 .stream()
                 .map(CustoEventoResponse::de)
                 .toList();
+
+        int total = todos.size();
+        int from = Math.min(page * size, total);
+        int to = Math.min(from + size, total);
+
+        org.springframework.data.domain.Page<CustoEventoResponse> pagina = new org.springframework.data.domain.PageImpl<>(
+                todos.subList(from, to), org.springframework.data.domain.PageRequest.of(page, size), total);
+
+        return PaginaResponse.de(pagina);
     }
 
     @Transactional

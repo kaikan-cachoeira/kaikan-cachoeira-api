@@ -40,16 +40,25 @@ public class ProdutoService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProdutoResponse> listar(String q, List<Integer> categoriaIds, Boolean abaixoDoMinimo) {
+    public com.kaikancachoeira.api.common.dto.PaginaResponse<ProdutoResponse> listar(String q, List<Integer> categoriaIds, Boolean abaixoDoMinimo, int page, int size) {
         String texto = q == null ? "" : q.trim();
 
-        return produtoRepository.buscarAtivos(texto).stream()
+        java.util.List<ProdutoResponse> todos = produtoRepository.buscarAtivos(texto).stream()
                 .filter(p -> categoriaIds == null || categoriaIds.isEmpty()
                         || (p.getCategoria() != null && categoriaIds.contains(p.getCategoria().getId())))
                 .filter(p -> !Boolean.TRUE.equals(abaixoDoMinimo)
                         || (p.getEstoqueMinimo() != null && p.getQuantidadeAtual() <= p.getEstoqueMinimo()))
                 .map(ProdutoResponse::de)
                 .toList();
+
+        int total = todos.size();
+        int from = Math.min(page * size, total);
+        int to = Math.min(from + size, total);
+
+        org.springframework.data.domain.Page<ProdutoResponse> pagina = new org.springframework.data.domain.PageImpl<>(
+                todos.subList(from, to), org.springframework.data.domain.PageRequest.of(page, size), total);
+
+        return com.kaikancachoeira.api.common.dto.PaginaResponse.de(pagina);
     }
 
     @Transactional(readOnly = true)

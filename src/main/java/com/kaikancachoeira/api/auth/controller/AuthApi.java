@@ -6,10 +6,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+// import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "Autenticação",
@@ -38,7 +41,7 @@ public interface AuthApi {
                     {"codigo": "CREDENCIAIS_INVALIDAS", "mensagem": "Usuário ou senha inválidos", "campos": []}
                     """)))
     })
-    ResponseEntity<LoginResponse> login(LoginRequest request);
+    ResponseEntity<LoginResponse> login(@RequestBody(description = "Credenciais de login", required = true) @Valid LoginRequest request);
 
     @Operation(
             summary = "Renova o par de tokens",
@@ -58,14 +61,14 @@ public interface AuthApi {
                         {"codigo": "REFRESH_TOKEN_INVALIDO_OU_EXPIRADO","mensagem": "Refresh token inválido, revogado ou expirado","campos": []}
                         """)))
     })
-    ResponseEntity<RefreshTokenResponse> refresh(RefreshTokenRequest request);
+    ResponseEntity<RefreshTokenResponse> refresh(@RequestBody(description = "Refresh token", required = true) @Valid RefreshTokenRequest request);
 
     @Operation(
             summary = "Encerra a sessão",
             description = "Revoga o refresh token informado. O access token continua válido até expirar, "
                     + "então o front deve descartá-lo.")
     @ApiResponse(responseCode = "204", description = "Refresh token revogado")
-    ResponseEntity<Void> logout(LogoutRequest request);
+    ResponseEntity<Void> logout(@RequestBody(description = "Refresh token a revogar", required = true) @Valid LogoutRequest request);
 
     @Operation(
             summary = "Solicita recuperação de senha",
@@ -87,7 +90,7 @@ public interface AuthApi {
                                     {"codigo": "VALIDACAO","mensagem": "Dados inválidos","campos": [{"campo": "email","mensagem": "deve ser um endereço de e-mail bem formado"}]}
                                     """)))
     })
-    ResponseEntity<Void> recuperarSenha(RecuperacaoSenhaRequest request);
+    ResponseEntity<Void> recuperarSenha(@RequestBody(description = "Dados para recuperação de senha", required = true) @Valid RecuperacaoSenhaRequest request);
 
     @Operation(
             summary = "Redefine a senha a partir do token do e-mail",
@@ -114,5 +117,5 @@ public interface AuthApi {
                         """)
                             }))
     })
-    ResponseEntity<Void> redefinirSenha(RedefinicaoSenhaRequest request);
+    ResponseEntity<Void> redefinirSenha(@RequestBody(description = "Dados para redefinição de senha", required = true) @Valid RedefinicaoSenhaRequest request);
 }

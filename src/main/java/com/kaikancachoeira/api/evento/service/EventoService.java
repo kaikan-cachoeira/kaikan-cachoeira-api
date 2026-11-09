@@ -1,5 +1,6 @@
 package com.kaikancachoeira.api.evento.service;
 
+import com.kaikancachoeira.api.common.dto.PaginaResponse;
 import com.kaikancachoeira.api.common.exception.ConflitoException;
 import com.kaikancachoeira.api.common.exception.RecursoNaoEncontradoException;
 import com.kaikancachoeira.api.common.exception.RequisicaoInvalidaException;
@@ -10,6 +11,9 @@ import com.kaikancachoeira.api.evento.entity.StatusEvento;
 import com.kaikancachoeira.api.evento.enums.TipoEvento;
 import com.kaikancachoeira.api.evento.exception.TransicaoStatusEventoInvalida;
 import com.kaikancachoeira.api.evento.repository.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -49,12 +53,14 @@ public class EventoService {
     }
 
     @Transactional(readOnly = true)
-    public List<EventoResponse> listar(
+    public PaginaResponse<EventoResponse> listar(
             String q,
             Integer statusId,
             TipoEvento tipoEvento,
             Instant dataInicio,
-            Instant dataFim
+            Instant dataFim,
+            int page,
+            int size
     ) {
         Specification<Evento> spec = Specification.unrestricted();
 
@@ -78,12 +84,21 @@ public class EventoService {
             spec = spec.and(EventoSpecifications.inicioAte(dataFim));
         }
 
-        return eventoRepository
-                .findAll(spec, Sort.by(Sort.Direction.DESC, "inicioPrevistoEm"))
-                .stream()
-                .sorted(Comparator.comparing(e -> !EM_ANDAMENTO.equals(e.getStatus().getCodigo())))
-                .map(EventoResponse::de)
+        Pageable pageable = PageRequest.of(page, size,
+                Sort.by(Sort.Direction.DESC, "inicioPrevistoEm"));
+
+        Page<Evento> pagina = eventoRepository.findAll(spec, pageable);
+
+        Page<EventoResponse> paginaDto = pagina.map(EventoResponse::de);
+
+        java.util.List<EventoResponse> ordenado = paginaDto.getContent().stream()
+                .sorted(Comparator.comparing(e -> !EM_ANDAMENTO.equals(e.status().codigo())))
                 .toList();
+
+        Page<EventoResponse> paginaOrdenada = new org.springframework.data.domain.PageImpl<>(
+                ordenado, pageable, paginaDto.getTotalElements());
+
+        return PaginaResponse.de(paginaOrdenada);
     }
 
     @Transactional(readOnly = true)

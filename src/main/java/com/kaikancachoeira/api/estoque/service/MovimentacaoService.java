@@ -57,6 +57,20 @@ public class MovimentacaoService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public PaginaResponse<TipoMovimentacaoResponse> listarTipos(int page, int size) {
+        java.util.List<TipoMovimentacaoResponse> todos = listarTipos();
+
+        int total = todos.size();
+        int from = Math.min(page * size, total);
+        int to = Math.min(from + size, total);
+
+        org.springframework.data.domain.Page<TipoMovimentacaoResponse> pagina = new org.springframework.data.domain.PageImpl<>(
+                todos.subList(from, to), org.springframework.data.domain.PageRequest.of(page, size), total);
+
+        return PaginaResponse.de(pagina);
+    }
+
     @Transactional
     public MovimentacaoResultadoResponse movimentar(Long produtoId, MovimentarEstoqueRequest request) {
         Produto produto = produtoRepository.findByIdParaAtualizacao(produtoId)

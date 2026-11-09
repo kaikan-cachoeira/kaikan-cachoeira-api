@@ -1,15 +1,13 @@
 package com.kaikancachoeira.api.evento.controller;
 
+import com.kaikancachoeira.api.common.dto.PaginaResponse;
 import com.kaikancachoeira.api.evento.dto.CustoEventoRequest;
 import com.kaikancachoeira.api.evento.dto.CustoEventoResponse;
 import com.kaikancachoeira.api.evento.service.CustoEventoService;
-import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/eventos/{eventoId}/custos")
@@ -24,10 +22,12 @@ public class CustoEventoController implements CustoEventoApi {
 
     @Override
     @GetMapping
-    public ResponseEntity<List<CustoEventoResponse>> listar(
-            @PathVariable Long eventoId
+    public ResponseEntity<PaginaResponse<CustoEventoResponse>> listar(
+            @PathVariable Long eventoId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
-        List<CustoEventoResponse> response = service.listar(eventoId);
+        PaginaResponse<CustoEventoResponse> response = service.listar(eventoId, page, size);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -38,7 +38,7 @@ public class CustoEventoController implements CustoEventoApi {
     @PostMapping
     public ResponseEntity<CustoEventoResponse> adicionar(
             @PathVariable Long eventoId,
-            @RequestBody @Valid CustoEventoRequest request
+            @RequestBody CustoEventoRequest request
     ) {
         CustoEventoResponse response = service.adicionar(eventoId, request);
 
@@ -52,7 +52,7 @@ public class CustoEventoController implements CustoEventoApi {
     public ResponseEntity<CustoEventoResponse> atualizar(
             @PathVariable Long eventoId,
             @PathVariable Long custoId,
-            @RequestBody @Valid CustoEventoRequest request
+            @RequestBody CustoEventoRequest request
     ) {
         CustoEventoResponse response = service.atualizar(eventoId, custoId, request);
 

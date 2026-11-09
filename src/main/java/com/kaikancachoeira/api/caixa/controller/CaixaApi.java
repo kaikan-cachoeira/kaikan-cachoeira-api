@@ -12,10 +12,13 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+ 
 
 @Tag(name = "Caixa", description = "Lançamentos de venda e devolução de fichas, formas de pagamento e resumo do caixa do evento.")
 public interface CaixaApi {
@@ -38,8 +41,8 @@ public interface CaixaApi {
     })
     ResponseEntity<RegistroCaixaResponse> registrar(
             @Parameter(description = "ID do evento", required = true) Long eventoId,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Dados do lançamento", required = true)
-            CaixaRequest request);
+            @RequestBody(description = "Dados do lançamento", required = true)
+            @Valid CaixaRequest request);
 
     @Operation(summary = "Lista lançamentos do caixa", description = """
         Retorna o resumo do caixa e o histórico paginado de lançamentos, do mais recente para o mais antigo.

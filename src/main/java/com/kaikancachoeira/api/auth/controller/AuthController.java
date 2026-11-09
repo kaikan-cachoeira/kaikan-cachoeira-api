@@ -2,7 +2,6 @@ package com.kaikancachoeira.api.auth.controller;
 
 import com.kaikancachoeira.api.auth.dto.*;
 import com.kaikancachoeira.api.auth.service.AuthService;
-import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,7 +20,7 @@ public class AuthController implements AuthApi {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody @Valid LoginRequest request) {
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
         LoginResponse response = service.login(request);
 
         return ResponseEntity
@@ -30,7 +29,7 @@ public class AuthController implements AuthApi {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<RefreshTokenResponse> refresh(@RequestBody @Valid RefreshTokenRequest request) {
+    public ResponseEntity<RefreshTokenResponse> refresh(@RequestBody RefreshTokenRequest request) {
         RefreshTokenResponse response = service.refreshToken(request);
 
         return ResponseEntity
@@ -39,7 +38,7 @@ public class AuthController implements AuthApi {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@RequestBody @Valid LogoutRequest request) {
+    public ResponseEntity<Void> logout(@RequestBody LogoutRequest request) {
         service.logout(request);
 
         return ResponseEntity
@@ -48,7 +47,7 @@ public class AuthController implements AuthApi {
     }
 
     @PostMapping("/recuperacao-senha")
-    public ResponseEntity<Void> recuperarSenha(@RequestBody @Valid RecuperacaoSenhaRequest request) {
+    public ResponseEntity<Void> recuperarSenha(@RequestBody RecuperacaoSenhaRequest request) {
         service.recuperarSenha(request);
 
         return ResponseEntity
@@ -57,7 +56,7 @@ public class AuthController implements AuthApi {
     }
 
     @PostMapping("/redefinicao-senha")
-    public ResponseEntity<Void> redefinirSenha(@RequestBody @Valid RedefinicaoSenhaRequest request) {
+    public ResponseEntity<Void> redefinirSenha(@RequestBody RedefinicaoSenhaRequest request) {
         service.redefinirSenha(request);
 
         return ResponseEntity

@@ -11,7 +11,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
+ 
 
 @Tag(
         name = "Relatórios",
@@ -56,7 +56,6 @@ public interface RelatorioApi {
             )
     })
     ResponseEntity<RelatorioResponse> gerar(
-            @Parameter(description = "ID do evento", required = true)
-            @PathVariable Long id
+            @Parameter(description = "ID do evento", required = true) Long id
     );
 }

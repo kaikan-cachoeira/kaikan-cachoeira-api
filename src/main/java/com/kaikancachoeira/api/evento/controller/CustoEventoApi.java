@@ -8,15 +8,16 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
 
-import java.util.List;
+import com.kaikancachoeira.api.common.dto.PaginaResponse;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 
 @Tag(
         name = "Custos do evento",
@@ -53,9 +54,9 @@ public interface CustoEventoApi {
                     )
             )
     })
-    ResponseEntity<List<CustoEventoResponse>> listar(
-            @Parameter(description = "ID do evento", required = true)
-            @PathVariable Long eventoId
+    ResponseEntity<PaginaResponse<CustoEventoResponse>> listar(@Parameter(description = "ID do evento", required = true) Long eventoId,
+            @Parameter(description = "Índice da página (começando em 0)") @Min(0) int page,
+            @Parameter(description = "Tamanho da página") @Min(1) @Max(100) int size
     );
 
     @Operation(
@@ -128,15 +129,13 @@ public interface CustoEventoApi {
                     )
             )
     })
-    ResponseEntity<CustoEventoResponse> adicionar(
-            @Parameter(description = "ID do evento", required = true)
-            @PathVariable Long eventoId,
+    ResponseEntity<CustoEventoResponse> adicionar(@Parameter(description = "ID do evento", required = true) Long eventoId,
 
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            @RequestBody(
                     description = "Dados do custo adicional",
                     required = true
             )
-            @RequestBody @Valid CustoEventoRequest request
+            @Valid CustoEventoRequest request
     );
 
     @Operation(
@@ -221,18 +220,14 @@ public interface CustoEventoApi {
                     )
             )
     })
-    ResponseEntity<CustoEventoResponse> atualizar(
-            @Parameter(description = "ID do evento", required = true)
-            @PathVariable Long eventoId,
+    ResponseEntity<CustoEventoResponse> atualizar(@Parameter(description = "ID do evento", required = true) Long eventoId,
+            @Parameter(description = "ID do custo", required = true) Long custoId,
 
-            @Parameter(description = "ID do custo", required = true)
-            @PathVariable Long custoId,
-
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            @RequestBody(
                     description = "Novos dados do custo",
                     required = true
             )
-            @RequestBody @Valid CustoEventoRequest request
+            @Valid CustoEventoRequest request
     );
 
     @Operation(
@@ -276,11 +271,7 @@ public interface CustoEventoApi {
                     )
             )
     })
-    ResponseEntity<Void> remover(
-            @Parameter(description = "ID do evento", required = true)
-            @PathVariable Long eventoId,
-
-            @Parameter(description = "ID do custo", required = true)
-            @PathVariable Long custoId
+    ResponseEntity<Void> remover(@Parameter(description = "ID do evento", required = true) Long eventoId,
+            @Parameter(description = "ID do custo", required = true) Long custoId
     );
 }
