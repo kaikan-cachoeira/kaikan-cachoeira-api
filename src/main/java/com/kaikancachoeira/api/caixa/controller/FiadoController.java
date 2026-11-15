@@ -1,10 +1,10 @@
 package com.kaikancachoeira.api.caixa.controller;
 
 import com.kaikancachoeira.api.caixa.dto.FiadoResponse;
+import com.kaikancachoeira.api.caixa.dto.FiadoListagemResponse;
 import com.kaikancachoeira.api.caixa.dto.QuitacaoRequest;
 import com.kaikancachoeira.api.caixa.dto.QuitacaoResponse;
 import com.kaikancachoeira.api.caixa.service.FiadoService;
-import com.kaikancachoeira.api.common.dto.PaginaResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -26,7 +26,7 @@ public class FiadoController implements FiadoApi {
     }
 
     @GetMapping
-    public ResponseEntity<PaginaResponse<FiadoResponse>> listar(
+    public ResponseEntity<FiadoListagemResponse> listar(
             @PathVariable Long eventoId,
             @RequestParam(required = false) String situacao,
             @RequestParam(defaultValue = "0") @Min(0) int page,

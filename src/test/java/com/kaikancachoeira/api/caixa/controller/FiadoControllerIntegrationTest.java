@@ -52,6 +52,19 @@ class FiadoControllerIntegrationTest extends ControllerIntegrationTest {
     }
 
     @Test
+    void semFiadosDeveRetornarEnvelopeComTotaisZerados() throws Exception {
+        Long eventoId = eventoEmAndamento();
+
+        listar(eventoId, "")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.itens", hasSize(0)))
+                .andExpect(jsonPath("$.totalItens").value(0))
+                .andExpect(jsonPath("$.totalPaginas").value(0))
+                .andExpect(jsonPath("$.pendingCount").value(0))
+                .andExpect(jsonPath("$.openAmount").value(0.0));
+    }
+
+    @Test
     void deveListarTodosOsFiadosDoEvento() throws Exception {
         Long eventoId = eventoEmAndamento();
         Long outro = insertEvento("Outro", "EVENTO", "NAO_INICIADO");
@@ -66,7 +79,10 @@ class FiadoControllerIntegrationTest extends ControllerIntegrationTest {
                 .andExpect(jsonPath("$.itens", hasSize(2)))
                 .andExpect(jsonPath("$.itens[0].id").isNumber())
                 .andExpect(jsonPath("$.itens[0].nomeDevedor").value("Fulano"))
-                .andExpect(jsonPath("$.itens[0].criadoEm").isNotEmpty());
+                .andExpect(jsonPath("$.itens[0].criadoEm").isNotEmpty())
+                .andExpect(jsonPath("$.totalItens").value(2))
+                .andExpect(jsonPath("$.pendingCount").value(1))
+                .andExpect(jsonPath("$.openAmount").value(40.0));
     }
 
     @Test
@@ -78,15 +94,43 @@ class FiadoControllerIntegrationTest extends ControllerIntegrationTest {
         sincronizar();
 
         listar(eventoId, "?situacao=pendente")
+                .andExpect(jsonPath("$.pendingCount").value(1))
+                .andExpect(jsonPath("$.openAmount").value(40.0))
                 .andExpect(jsonPath("$.itens", hasSize(1)))
                 .andExpect(jsonPath("$.itens[0].quitado").value(false))
                 .andExpect(jsonPath("$.itens[0].valor").value(40.0))
                 .andExpect(jsonPath("$.itens[0].formaPagamento").doesNotExist());
         listar(eventoId, "?situacao=quitado")
+                .andExpect(jsonPath("$.pendingCount").value(0))
+                .andExpect(jsonPath("$.openAmount").value(0.0))
                 .andExpect(jsonPath("$.itens", hasSize(1)))
                 .andExpect(jsonPath("$.itens[0].quitado").value(true))
                 .andExpect(jsonPath("$.itens[0].quitadoEm").isNotEmpty())
                 .andExpect(jsonPath("$.itens[0].formaPagamento").value("PIX"));
+    }
+
+    @Test
+    void paginaNaoDeveAlterarTotaisGlobais() throws Exception {
+        Long eventoId = eventoEmAndamento();
+        fiadoPendente(eventoId, "10.00");
+        fiadoPendente(eventoId, "20.00");
+        fiadoPendente(eventoId, "30.00");
+
+        listar(eventoId, "?page=0&size=2")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.itens", hasSize(2)))
+                .andExpect(jsonPath("$.totalItens").value(3))
+                .andExpect(jsonPath("$.totalPaginas").value(2))
+                .andExpect(jsonPath("$.pendingCount").value(3))
+                .andExpect(jsonPath("$.openAmount").value(60.0));
+
+        listar(eventoId, "?page=1&size=2")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.itens", hasSize(1)))
+                .andExpect(jsonPath("$.totalItens").value(3))
+                .andExpect(jsonPath("$.totalPaginas").value(2))
+                .andExpect(jsonPath("$.pendingCount").value(3))
+                .andExpect(jsonPath("$.openAmount").value(60.0));
     }
 
     @Test
@@ -95,6 +139,7 @@ class FiadoControllerIntegrationTest extends ControllerIntegrationTest {
 
         listar(eventoId, "?situacao=todos")
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("REQUISICAO_INVALIDA"))
                 .andExpect(jsonPath("$.campos[0].campo").value("situacao"));
     }
 
