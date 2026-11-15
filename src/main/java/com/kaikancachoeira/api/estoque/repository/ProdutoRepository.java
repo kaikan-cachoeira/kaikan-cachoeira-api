@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-public interface ProdutoRepository extends JpaRepository<Produto, Long> {
+public interface ProdutoRepository extends JpaRepository<Produto, Long>, JpaSpecificationExecutor<Produto> {
 
     @Query("""
             select p from Produto p left join fetch p.categoria

@@ -1,5 +1,6 @@
 package com.kaikancachoeira.api.estoque.service;
 
+import com.kaikancachoeira.api.common.dto.PaginaResponse;
 import com.kaikancachoeira.api.common.exception.ConflitoException;
 import com.kaikancachoeira.api.common.exception.RecursoNaoEncontradoException;
 import com.kaikancachoeira.api.common.exception.RequisicaoInvalidaException;
@@ -9,9 +10,15 @@ import com.kaikancachoeira.api.estoque.dto.ProdutoRequest;
 import com.kaikancachoeira.api.estoque.dto.ProdutoResponse;
 import com.kaikancachoeira.api.estoque.entity.Categoria;
 import com.kaikancachoeira.api.estoque.entity.Produto;
+import com.kaikancachoeira.api.estoque.enums.SituacaoProduto;
+import com.kaikancachoeira.api.estoque.repository.ProdutoSpecifications;
 import com.kaikancachoeira.api.estoque.repository.CategoriaRepository;
 import com.kaikancachoeira.api.estoque.repository.EstoqueRepository;
 import com.kaikancachoeira.api.estoque.repository.ProdutoRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -40,25 +47,31 @@ public class ProdutoService {
     }
 
     @Transactional(readOnly = true)
-    public com.kaikancachoeira.api.common.dto.PaginaResponse<ProdutoResponse> listar(String q, List<Integer> categoriaIds, Boolean abaixoDoMinimo, int page, int size) {
+    public PaginaResponse<ProdutoResponse> listar(String q, List<Integer> categoriaIds, String situacao, int page, int size) {
         String texto = q == null ? "" : q.trim();
+        SituacaoProduto situacaoProduto = SituacaoProduto.fromCodigo(situacao);
 
-        java.util.List<ProdutoResponse> todos = produtoRepository.buscarAtivos(texto).stream()
-                .filter(p -> categoriaIds == null || categoriaIds.isEmpty()
-                        || (p.getCategoria() != null && categoriaIds.contains(p.getCategoria().getId())))
-                .filter(p -> !Boolean.TRUE.equals(abaixoDoMinimo)
-                        || (p.getEstoqueMinimo() != null && p.getQuantidadeAtual() <= p.getEstoqueMinimo()))
-                .map(ProdutoResponse::de)
-                .toList();
+        Specification<Produto> spec = Specification.where(ProdutoSpecifications.ativos())
+                .and(ProdutoSpecifications.carregarCategoria());
 
-        int total = todos.size();
-        int from = Math.min(page * size, total);
-        int to = Math.min(from + size, total);
+        if (!texto.isBlank()) {
+            spec = spec.and(ProdutoSpecifications.textoContem(texto));
+        }
 
-        org.springframework.data.domain.Page<ProdutoResponse> pagina = new org.springframework.data.domain.PageImpl<>(
-                todos.subList(from, to), org.springframework.data.domain.PageRequest.of(page, size), total);
+        if (categoriaIds != null && !categoriaIds.isEmpty()) {
+            spec = spec.and(ProdutoSpecifications.categoriasEm(categoriaIds.stream().filter(java.util.Objects::nonNull).toList()));
+        }
 
-        return com.kaikancachoeira.api.common.dto.PaginaResponse.de(pagina);
+        if (situacaoProduto != null) {
+            spec = spec.and(ProdutoSpecifications.situacao(situacaoProduto));
+        }
+
+        Page<Produto> pagina = produtoRepository.findAll(
+                spec,
+                PageRequest.of(page, size, Sort.by(Sort.Order.asc("nome"), Sort.Order.asc("id")))
+        );
+
+        return PaginaResponse.de(pagina.map(ProdutoResponse::de));
     }
 
     @Transactional(readOnly = true)

@@ -42,11 +42,11 @@ public class ProdutoController implements ProdutoApi {
     public ResponseEntity<PaginaResponse<ProdutoResponse>> listar(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) List<Integer> categoriaId,
-            @RequestParam(required = false) Boolean abaixoDoMinimo,
+            @RequestParam(required = false) String situacao,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
     ) {
-        return ResponseEntity.ok(service.listar(q, categoriaId, abaixoDoMinimo, page, size));
+        return ResponseEntity.ok(service.listar(q, categoriaId, situacao, page, size));
     }
 
     @Override
