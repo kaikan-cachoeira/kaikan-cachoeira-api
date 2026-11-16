@@ -13,7 +13,7 @@ class CargaInicialTest extends DbIntegrationTest {
 
     @Test
     void todasAsMigrationsDevemTerSidoAplicadasComSucesso() {
-        assertThat(count("select count(*) from flyway_schema_history where success")).isEqualTo(29);
+        assertThat(count("select count(*) from flyway_schema_history where success")).isEqualTo(33);
         assertThat(count("select count(*) from flyway_schema_history where not success")).isZero();
     }
 
