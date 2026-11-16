@@ -1,9 +1,11 @@
 package com.kaikancachoeira.api.evento.service;
 
 import com.kaikancachoeira.api.common.dto.PaginaResponse;
+import com.kaikancachoeira.api.common.exception.CampoErro;
 import com.kaikancachoeira.api.common.exception.ConflitoException;
 import com.kaikancachoeira.api.common.exception.RecursoNaoEncontradoException;
 import com.kaikancachoeira.api.common.exception.RequisicaoInvalidaException;
+import com.kaikancachoeira.api.common.exception.ValidacaoException;
 import com.kaikancachoeira.api.evento.dto.*;
 import com.kaikancachoeira.api.evento.entity.CustoEvento;
 import com.kaikancachoeira.api.evento.entity.Evento;
@@ -14,17 +16,18 @@ import com.kaikancachoeira.api.evento.repository.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.util.Comparator;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class EventoService {
@@ -32,6 +35,8 @@ public class EventoService {
     private static final String NAO_INICIADO = "NAO_INICIADO";
     private static final String EM_ANDAMENTO = "EM_ANDAMENTO";
     private static final String ENCERRADO = "ENCERRADO";
+
+    private static final Set<String> STATUS_PERMITIDOS = Set.of(NAO_INICIADO, EM_ANDAMENTO, ENCERRADO);
 
     private static final Map<String, Set<String>> TRANSICOES = Map.of(
             NAO_INICIADO, Set.of(EM_ANDAMENTO),
@@ -55,25 +60,29 @@ public class EventoService {
     @Transactional(readOnly = true)
     public PaginaResponse<EventoResponse> listar(
             String q,
-            Integer statusId,
-            TipoEvento tipoEvento,
+            String status,
+            String tipos,
             Instant dataInicio,
             Instant dataFim,
             int page,
             int size
     ) {
+        validarPaginacao(page, size);
+
         Specification<Evento> spec = Specification.unrestricted();
 
         if (q != null && !q.isBlank()) {
             spec = spec.and(EventoSpecifications.nomeContem(q.trim()));
         }
 
-        if (statusId != null) {
-            spec = spec.and(EventoSpecifications.comStatus(statusId));
+        Set<String> codigosStatus = parseStatus(status);
+        if (!codigosStatus.isEmpty()) {
+            spec = spec.and(EventoSpecifications.comStatus(codigosStatus));
         }
 
-        if (tipoEvento != null) {
-            spec = spec.and(EventoSpecifications.comTipo(tipoEvento));
+        Set<TipoEvento> tiposEvento = parseTipos(tipos);
+        if (!tiposEvento.isEmpty()) {
+            spec = spec.and(EventoSpecifications.comTipos(tiposEvento));
         }
 
         if (dataInicio != null) {
@@ -84,21 +93,15 @@ public class EventoService {
             spec = spec.and(EventoSpecifications.inicioAte(dataFim));
         }
 
-        Pageable pageable = PageRequest.of(page, size,
-                Sort.by(Sort.Direction.DESC, "inicioPrevistoEm"));
+        spec = spec.and(EventoSpecifications.ordenarComEmAndamentoPrimeiro());
+
+        Pageable pageable = PageRequest.of(page, size);
 
         Page<Evento> pagina = eventoRepository.findAll(spec, pageable);
 
         Page<EventoResponse> paginaDto = pagina.map(EventoResponse::de);
 
-        java.util.List<EventoResponse> ordenado = paginaDto.getContent().stream()
-                .sorted(Comparator.comparing(e -> !EM_ANDAMENTO.equals(e.status().codigo())))
-                .toList();
-
-        Page<EventoResponse> paginaOrdenada = new org.springframework.data.domain.PageImpl<>(
-                ordenado, pageable, paginaDto.getTotalElements());
-
-        return PaginaResponse.de(paginaOrdenada);
+        return PaginaResponse.de(paginaDto);
     }
 
     @Transactional(readOnly = true)
@@ -277,5 +280,73 @@ public class EventoService {
 
     private TransicaoStatusEventoInvalida transicaoInvalida(String statusAtual, String novoStatus) {
         return new TransicaoStatusEventoInvalida(statusAtual, novoStatus);
+    }
+
+    private Set<String> parseStatus(String csv) {
+        if (csv == null || csv.isBlank()) {
+            return Set.of();
+        }
+
+        Set<String> codigos = Arrays.stream(csv.split(","))
+                .map(String::trim)
+                .filter(token -> !token.isBlank())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        if (codigos.isEmpty()) {
+            return Set.of();
+        }
+
+        boolean invalido = codigos.stream().anyMatch(token -> !STATUS_PERMITIDOS.contains(token));
+        if (invalido) {
+            throw parametroInvalido("status");
+        }
+
+        return codigos;
+    }
+
+    private Set<TipoEvento> parseTipos(String csv) {
+        if (csv == null || csv.isBlank()) {
+            return Set.of();
+        }
+
+        Set<TipoEvento> tipos = new LinkedHashSet<>();
+        for (String token : csv.split(",")) {
+            String normalizado = token.trim();
+            if (normalizado.isBlank()) {
+                continue;
+            }
+
+            try {
+                tipos.add(TipoEvento.valueOf(normalizado));
+            } catch (IllegalArgumentException ex) {
+                throw parametroInvalido("tipos");
+            }
+        }
+
+        return tipos;
+    }
+
+    private void validarPaginacao(int page, int size) {
+        if (page < 0) {
+            throw validacao("page", "deve ser maior ou igual a 0");
+        }
+        if (size < 1 || size > 100) {
+            throw validacao("size", "deve ser entre 1 e 100");
+        }
+    }
+
+    private RequisicaoInvalidaException parametroInvalido(String campo) {
+        return new RequisicaoInvalidaException(
+                "REQUISICAO_INVALIDA",
+                "Valor inválido para o parâmetro",
+                List.of(new CampoErro(campo, "Valor inválido"))
+        );
+    }
+
+    private ValidacaoException validacao(String campo, String mensagem) {
+        return new ValidacaoException(
+                "Dados inválidos",
+                List.of(new CampoErro(campo, mensagem))
+        );
     }
 }

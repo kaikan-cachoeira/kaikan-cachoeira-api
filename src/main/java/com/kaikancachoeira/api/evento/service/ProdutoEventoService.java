@@ -1,9 +1,7 @@
 package com.kaikancachoeira.api.evento.service;
 
 import com.kaikancachoeira.api.common.dto.PaginaResponse;
-import com.kaikancachoeira.api.common.exception.ConflitoException;
-import com.kaikancachoeira.api.common.exception.RecursoNaoEncontradoException;
-import com.kaikancachoeira.api.common.exception.RequisicaoInvalidaException;
+import com.kaikancachoeira.api.common.exception.*;
 import com.kaikancachoeira.api.common.storage.ArmazenamentoService;
 import com.kaikancachoeira.api.estoque.entity.Produto;
 import com.kaikancachoeira.api.estoque.repository.CategoriaRepository;
@@ -17,11 +15,20 @@ import com.kaikancachoeira.api.evento.enums.OrigemProdutoEvento;
 import com.kaikancachoeira.api.evento.enums.TipoEvento;
 import com.kaikancachoeira.api.evento.repository.EventoRepository;
 import com.kaikancachoeira.api.evento.repository.ProdutoEventoRepository;
+import com.kaikancachoeira.api.evento.repository.ProdutoEventoSpecifications;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class ProdutoEventoService {
@@ -47,24 +54,38 @@ public class ProdutoEventoService {
     }
 
     @Transactional(readOnly = true)
-    public PaginaResponse<ProdutoEventoResponse> listar(Long eventoId, String q, List<String> categorias, int page, int size) {
+    public PaginaResponse<ProdutoEventoResponse> listar(Long eventoId, String q, List<String> categorias, OrigemProdutoEvento origem, int page, int size) {
+        validarPaginacao(page, size);
         buscarEvento(eventoId);
-        String texto = (q == null) ? "" : q.trim();
-        List<String> cats = (categorias == null || categorias.isEmpty()) ? null : categorias;
 
-        java.util.List<ProdutoEventoResponse> todos = produtoEventoRepository.buscarPorEvento(eventoId, texto, cats).stream()
-                .map(pe -> ProdutoEventoResponse.de(pe,
-                        produtoEventoRepository.quantidadeVendida(pe.getId())))
-                .toList();
+        Specification<ProdutoEvento> spec = Specification.<ProdutoEvento>unrestricted()
+                .and(ProdutoEventoSpecifications.doEvento(eventoId));
 
-        int total = todos.size();
-        int from = Math.min(page * size, total);
-        int to = Math.min(from + size, total);
+        if (q != null && !q.isBlank()) {
+            spec = spec.and(ProdutoEventoSpecifications.textoContem(q.trim()));
+        }
 
-        org.springframework.data.domain.Page<ProdutoEventoResponse> pagina = new org.springframework.data.domain.PageImpl<>(
-                todos.subList(from, to), org.springframework.data.domain.PageRequest.of(page, size), total);
+        Set<String> categoriasNormalizadas = normalizarCategorias(categorias);
+        if (!categoriasNormalizadas.isEmpty()) {
+            spec = spec.and(ProdutoEventoSpecifications.categoriasEm(categoriasNormalizadas));
+        }
 
-        return PaginaResponse.de(pagina);
+        if (origem != null) {
+            spec = spec.and(ProdutoEventoSpecifications.comOrigem(origem));
+        }
+
+        spec = spec.and(ProdutoEventoSpecifications.ordenarPorId());
+
+        Page<ProdutoEvento> pagina = produtoEventoRepository.findAll(spec, PageRequest.of(page, size));
+
+        Map<Long, Integer> vendidasPorPe = carregarQuantidadesVendidas(pagina.getContent());
+
+        Page<ProdutoEventoResponse> paginaDto = pagina.map(pe -> ProdutoEventoResponse.de(
+                pe,
+                vendidasPorPe.getOrDefault(pe.getId(), 0)
+        ));
+
+        return PaginaResponse.de(paginaDto);
     }
 
     @Transactional(readOnly = true)
@@ -163,6 +184,47 @@ public class ProdutoEventoService {
             throw new ConflitoException("REUNIAO_SEM_CARDAPIO",
                     "Reuniões não possuem cardápio.");
         }
+    }
+
+    private void validarPaginacao(int page, int size) {
+        if (page < 0) {
+            throw new ValidacaoException(
+                    "Dados inválidos",
+                    List.of(new CampoErro("page", "deve ser maior ou igual a 0"))
+            );
+        }
+        if (size < 1 || size > 100) {
+            throw new ValidacaoException(
+                    "Dados inválidos",
+                    List.of(new CampoErro("size", "deve ser entre 1 e 100"))
+            );
+        }
+    }
+
+    private Set<String> normalizarCategorias(List<String> categorias) {
+        if (categorias == null || categorias.isEmpty()) {
+            return Set.of();
+        }
+
+        return categorias.stream()
+                .filter(c -> c != null && !c.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private Map<Long, Integer> carregarQuantidadesVendidas(List<ProdutoEvento> itens) {
+        if (itens.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Long> ids = itens.stream().map(ProdutoEvento::getId).toList();
+        Map<Long, Integer> mapa = new LinkedHashMap<>();
+        for (Object[] linha : produtoEventoRepository.quantidadesVendidasPorProdutoEventoIds(ids)) {
+            Long id = ((Number) linha[0]).longValue();
+            Integer quantidade = ((Number) linha[1]).intValue();
+            mapa.put(id, quantidade);
+        }
+        return mapa;
     }
 
     private void preencherEstoque(ProdutoEvento pe, Long eventoId, ProdutoEventoRequest request) {

@@ -4,6 +4,7 @@ import com.kaikancachoeira.api.common.exception.ErroResponse;
 import com.kaikancachoeira.api.evento.dto.FotoEventoResponse;
 import com.kaikancachoeira.api.evento.dto.ProdutoEventoRequest;
 import com.kaikancachoeira.api.evento.dto.ProdutoEventoResponse;
+import com.kaikancachoeira.api.evento.enums.OrigemProdutoEvento;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -42,6 +43,7 @@ public interface ProdutoEventoApi {
             @Parameter(description = "ID do evento", required = true) Long eventoId,
             @Parameter(description = "Texto para pesquisa pelo nome") String q,
             @Parameter(description = "Nomes de categoria (aceita repetição)") List<String> categoria,
+            @Parameter(description = "Origem do item no cardápio") OrigemProdutoEvento origem,
             @Parameter(description = "Índice da página (começando em 0)") @Min(0) int page,
             @Parameter(description = "Tamanho da página") @Min(1) @Max(100) int size);
 

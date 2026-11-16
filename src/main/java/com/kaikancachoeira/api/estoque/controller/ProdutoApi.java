@@ -35,7 +35,7 @@ public interface ProdutoApi {
             summary = "Lista produtos",
             description = """
             Retorna os produtos cadastrados, permitindo aplicar filtros opcionais
-            por texto, categorias e situação de estoque abaixo do mínimo.
+            por texto, categorias e situação de estoque.
             """
     )
     @ApiResponse(responseCode = "200", description = "Lista de produtos retornada")
@@ -44,7 +44,7 @@ public interface ProdutoApi {
 
             @Parameter(description = "IDs das categorias para filtrar os produtos") List<Integer> categoriaId,
 
-            @Parameter(description = "Filtra produtos abaixo do estoque mínimo") Boolean abaixoDoMinimo,
+            @Parameter(description = "Situação do estoque: ok, out ou low") String situacao,
             @Parameter(description = "Índice da página (começando em 0)") @Min(0) int page,
             @Parameter(description = "Tamanho da página") @Min(1) @Max(100) int size
     );
@@ -114,7 +114,7 @@ public interface ProdutoApi {
                     content = @Content(
                             mediaType = "application/json",
                             schema = @Schema(
-                                    implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class
+                                    implementation = ErroResponse.class
                             ),
                             examples = @ExampleObject(name = "Arquivo inválido", value = """
                                     {"codigo": "ARQUIVO_INVALIDO","mensagem": "Formato aceito: JPG, PNG ou WEBP.","campos": []}
@@ -127,7 +127,7 @@ public interface ProdutoApi {
                     content = @Content(
                             mediaType = "application/json",
                             schema = @Schema(
-                                    implementation = com.kaikancachoeira.api.common.exception.ErroResponse.class
+                                    implementation = ErroResponse.class
                             ),
                             examples = @ExampleObject(name = "Produto duplicado", value = """
                                     {"codigo": "PRODUTO_DUPLICADO","mensagem": "Já existe um produto com este nome.","campos": []}

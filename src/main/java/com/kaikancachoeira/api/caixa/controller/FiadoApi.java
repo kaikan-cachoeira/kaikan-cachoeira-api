@@ -1,5 +1,6 @@
 package com.kaikancachoeira.api.caixa.controller;
 
+import com.kaikancachoeira.api.caixa.dto.FiadoListagemResponse;
 import com.kaikancachoeira.api.caixa.dto.FiadoResponse;
 import com.kaikancachoeira.api.caixa.dto.QuitacaoRequest;
 import com.kaikancachoeira.api.caixa.dto.QuitacaoResponse;
@@ -18,7 +19,6 @@ import org.springframework.http.ResponseEntity;
  
 import jakarta.validation.Valid;
 
-import com.kaikancachoeira.api.common.dto.PaginaResponse;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.util.List;
@@ -38,7 +38,7 @@ public interface FiadoApi {
                         {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Evento não encontrado: 123","campos": []}
                         """)))
     })
-    ResponseEntity<PaginaResponse<FiadoResponse>> listar(@Parameter(description = "ID do evento", required = true) Long eventoId,
+    ResponseEntity<FiadoListagemResponse> listar(@Parameter(description = "ID do evento", required = true) Long eventoId,
             @Parameter(description = "pendente ou quitado") String situacao,
             @Parameter(description = "Índice da página (começando em 0)") @Min(0) int page,
             @Parameter(description = "Tamanho da página") @Min(1) @Max(100) int size);

@@ -1,5 +1,6 @@
 package com.kaikancachoeira.api.caixa.service;
 
+import com.kaikancachoeira.api.caixa.dto.FiadoListagemResponse;
 import com.kaikancachoeira.api.caixa.dto.FiadoResponse;
 import com.kaikancachoeira.api.caixa.dto.LancamentoResponse;
 import com.kaikancachoeira.api.caixa.dto.QuitacaoRequest;
@@ -9,16 +10,23 @@ import com.kaikancachoeira.api.caixa.entity.FormaPagamento;
 import com.kaikancachoeira.api.caixa.entity.PagamentoCaixa;
 import com.kaikancachoeira.api.caixa.entity.TipoLancamento;
 import com.kaikancachoeira.api.caixa.repository.FiadoRepository;
+import com.kaikancachoeira.api.caixa.repository.FiadoSpecifications;
 import com.kaikancachoeira.api.caixa.repository.PagamentoCaixaRepository;
-import com.kaikancachoeira.api.common.dto.PaginaResponse;
+import com.kaikancachoeira.api.common.exception.CampoErro;
 import com.kaikancachoeira.api.common.exception.ConflitoException;
 import com.kaikancachoeira.api.common.exception.RecursoNaoEncontradoException;
+import com.kaikancachoeira.api.common.exception.RequisicaoInvalidaException;
 import com.kaikancachoeira.api.common.exception.ValidacaoException;
 import com.kaikancachoeira.api.evento.entity.Evento;
 import com.kaikancachoeira.api.evento.service.EventoGuard;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -45,19 +53,30 @@ public class FiadoService {
     }
 
     @Transactional(readOnly = true)
-    public PaginaResponse<FiadoResponse> listar(Long eventoId, String situacao, int page, int size) {
+    public FiadoListagemResponse listar(Long eventoId, String situacao, int page, int size) {
         eventoGuard.buscar(eventoId);
         Boolean quitado = converterSituacao(situacao);
-        java.util.List<FiadoResponse> todos = fiadoRepository.listar(eventoId, quitado).stream().map(FiadoResponse::de).toList();
 
-        int total = todos.size();
-        int from = Math.min(page * size, total);
-        int to = Math.min(from + size, total);
+        Specification<Fiado> spec = Specification.where(FiadoSpecifications.doEvento(eventoId))
+                .and(FiadoSpecifications.quitado(quitado));
 
-        org.springframework.data.domain.Page<FiadoResponse> pagina = new org.springframework.data.domain.PageImpl<>(
-                todos.subList(from, to), org.springframework.data.domain.PageRequest.of(page, size), total);
+        Page<Fiado> pagina = fiadoRepository.findAll(
+                spec,
+                PageRequest.of(page, size, Sort.by(Sort.Order.desc("criadoEm"), Sort.Order.desc("id")))
+        );
 
-        return PaginaResponse.de(pagina);
+        long pendingCount = calcularPendingCount(eventoId, quitado);
+        BigDecimal openAmount = calcularOpenAmount(eventoId, quitado);
+
+        return new FiadoListagemResponse(
+                pagina.map(FiadoResponse::de).getContent(),
+                pagina.getNumber(),
+                pagina.getSize(),
+                pagina.getTotalElements(),
+                pagina.getTotalPages(),
+                pendingCount,
+                openAmount
+        );
     }
 
     @Transactional
@@ -98,7 +117,26 @@ public class FiadoService {
         return switch (situacao.trim().toLowerCase()) {
             case "pendente" -> false;
             case "quitado" -> true;
-            default -> throw ValidacaoException.campo("situacao", "Situação deve ser pendente ou quitado");
+            default -> throw new RequisicaoInvalidaException(
+                    "REQUISICAO_INVALIDA",
+                    "Valor inválido para o parâmetro",
+                    List.of(new CampoErro("situacao", "Valor inválido"))
+            );
         };
+    }
+
+    private long calcularPendingCount(Long eventoId, Boolean quitado) {
+        if (Boolean.TRUE.equals(quitado)) {
+            return 0L;
+        }
+        return fiadoRepository.contarEmAberto(eventoId);
+    }
+
+    private BigDecimal calcularOpenAmount(Long eventoId, Boolean quitado) {
+        if (Boolean.TRUE.equals(quitado)) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal soma = fiadoRepository.somarEmAberto(eventoId);
+        return soma == null ? BigDecimal.ZERO : soma;
     }
 }
