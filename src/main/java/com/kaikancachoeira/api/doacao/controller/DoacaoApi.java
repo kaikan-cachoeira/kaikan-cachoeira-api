@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,7 +16,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
- 
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
@@ -50,15 +51,20 @@ public interface DoacaoApi {
             )
     })
     ResponseEntity<PaginaResponse<DoacaoResponse>> listar(
-            @Parameter(description = "Texto para pesquisar por doador ou descrição do item") String q,
+            @Parameter(description = "Texto para pesquisar por doador ou descrição do item")
+            @RequestParam(required = false) String q,
 
-            @Parameter(description = "Tipos da doação: dinheiro, produto ou reabastecimento (aceita repetição)") List<String> tipo,
+            @Parameter(description = "Tipos da doação: dinheiro, produto ou reabastecimento (aceita repetição)")
+            @RequestParam(required = false) List<String> tipo,
 
-            @Parameter(description = "IDs dos eventos (aceita repetição)") List<Long> eventoId,
+            @Parameter(description = "IDs dos eventos (aceita repetição)")
+            @RequestParam(required = false) List<Long> eventoId,
 
-            @Parameter(description = "Índice da página, começando em zero") @Min(0) int page,
+            @Parameter(description = "Índice da página, começando em zero")
+            @RequestParam(defaultValue = "0") @Min(0) int page,
 
-            @Parameter(description = "Quantidade de registros por página (de 1 a 100)") @Min(1) @Max(100) int size
+            @Parameter(description = "Quantidade de registros por página (de 1 a 100)")
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
     );
 
     @Operation(
@@ -93,11 +99,11 @@ public interface DoacaoApi {
             )
     })
     ResponseEntity<DoacaoResponse> criar(
-            @RequestBody(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Dados da doação",
                     required = true
             )
-            @Valid DoacaoRequest request
+            @RequestBody @Valid DoacaoRequest request
     );
 
     @Operation(
@@ -143,12 +149,50 @@ public interface DoacaoApi {
             )
     })
     ResponseEntity<Void> atualizar(
-            @Parameter(description = "ID da doação", required = true) Long id,
+            @Parameter(description = "ID da doação", required = true)
+            @PathVariable Long id,
 
-            @RequestBody(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Dados da doação",
                     required = true
             )
-            @Valid DoacaoRequest request
+            @RequestBody @Valid DoacaoRequest request
+    );
+
+    @Operation(
+            summary = "Exclui doação",
+            description = """
+            Exclui uma doação em qualquer status do evento.
+            Quando for um reabastecimento, desfaz o estoque: remove a movimentação DOACAO e o lote criado por ela.
+            Só é possível se nada do lote já tiver sido consumido.
+            """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Doação excluída"),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Doação não encontrada",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Recurso não encontrado", value = """
+                        {"codigo": "RECURSO_NAO_ENCONTRADO","mensagem": "Doação não encontrado: 123","campos": []}
+                        """)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Lote da doação já foi consumido ou produto inativo",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErroResponse.class),
+                            examples = @ExampleObject(name = "Lote consumido", value = """
+                    {"codigo": "LOTE_JA_CONSUMIDO","mensagem": "Não é possível excluir: parte do lote desta doação já foi consumida (5).","campos": []}
+                    """)
+                    )
+            )
+    })
+    ResponseEntity<Void> excluir(
+            @Parameter(description = "ID da doação", required = true)
+            @PathVariable Long id
     );
 }

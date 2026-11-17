@@ -38,14 +38,21 @@ public class DoacaoController implements DoacaoApi {
 
     @Override
     @PostMapping
-    public ResponseEntity<DoacaoResponse> criar(@RequestBody DoacaoRequest request) {
+    public ResponseEntity<DoacaoResponse> criar(@RequestBody @Valid DoacaoRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.criar(request));
     }
 
     @Override
     @PutMapping("/{id}")
-    public ResponseEntity<Void> atualizar(@PathVariable Long id, @RequestBody DoacaoRequest request) {
+    public ResponseEntity<Void> atualizar(@PathVariable Long id, @RequestBody @Valid DoacaoRequest request) {
         service.atualizar(id, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> excluir(@PathVariable Long id) {
+        service.excluir(id);
         return ResponseEntity.noContent().build();
     }
 }

@@ -172,6 +172,18 @@ public class DoacaoService {
         aplicarDados(doacao, doacao.getTipo(), request, null);
     }
 
+    @Transactional
+    public void excluir(Long id) {
+        Doacao doacao = doacaoRepository.findByIdParaAtualizacao(id)
+                .orElseThrow(() -> RecursoNaoEncontradoException.de("Doação", id));
+
+        if (doacao.getTipo() == TipoDoacao.REABASTECIMENTO) {
+            desfazerEntradaDeEstoque(doacao);
+        }
+
+        doacaoRepository.delete(doacao);
+    }
+
     private void validarCamposDoTipo(TipoDoacao tipo, DoacaoRequest request, boolean criacao,
                                      List<CampoErro> erros) {
         switch (tipo) {
@@ -257,6 +269,31 @@ public class DoacaoService {
         movimentacaoRepository.save(movimentacao);
 
         produto.setQuantidadeAtual(produto.getQuantidadeAtual() + quantidade);
+    }
+
+    private void desfazerEntradaDeEstoque(Doacao doacao) {
+        MovimentacaoEstoque movimentacao = doacaoRepository.movimentacaoDaDoacao(doacao.getId())
+                .orElseThrow(() -> new IllegalStateException(
+                        "Movimentação DOACAO não encontrada para a doação " + doacao.getId()));
+
+        Produto produto = produtoRepository.findByIdParaAtualizacao(doacao.getProdutoId())
+                .orElseThrow(() -> new ConflitoException("PRODUTO_INATIVO",
+                        "O produto da doação está inativo."));
+
+        Estoque lote = doacaoRepository.lotePorDoacaoParaAtualizacao(doacao.getId())
+                .orElseThrow(() -> new IllegalStateException(
+                        "Lote não encontrado para a doação " + doacao.getId()));
+
+        int consumido = lote.getQuantidadeInicial() - lote.getQuantidadeAtual();
+        if (consumido > 0) {
+            throw new ConflitoException("LOTE_JA_CONSUMIDO",
+                    "Não é possível excluir: parte do lote desta doação já foi consumida (" + consumido + ").");
+        }
+
+        produto.setQuantidadeAtual(produto.getQuantidadeAtual() - doacao.getQuantidade());
+
+        movimentacaoRepository.delete(movimentacao);
+        estoqueRepository.delete(lote);
     }
 
     private void ajustarEstoque(Doacao doacao, DoacaoRequest request) {
