@@ -15,6 +15,51 @@ class AnuidadeControllerIntegrationTest extends ControllerIntegrationTest {
         return auth("ANUIDADES_MENU", "ANUIDADES_LEITURA");
     }
 
+    private String semPermissao() {
+        return auth("VENDAS_MENU");
+    }
+
+    @Test
+    void criarAnuidadesSemPermissaoDeveRetornar403() throws Exception {
+        Long config = insertConfiguracaoAnuidade(2026, bd("180.00"));
+
+        enviar(post("/anuidades"), semPermissao(), """
+                {
+                  "idConfAnuidade": %d,
+                  "valor": 180.00
+                }
+                """.formatted(config))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void criarAnuidadeParaAssociadoSemPermissaoDeveRetornar403() throws Exception {
+        Long config = insertConfiguracaoAnuidade(2026, bd("180.00"));
+        Long titular = insertAssociado("Titular", LocalDate.of(1980, 1, 1), "TITULAR", null, "11910000001");
+
+        enviar(post("/anuidades/associados/{idAssociado}", titular), semPermissao(), """
+                {
+                  "idConfAnuidade": %d,
+                  "valor": 180.00
+                }
+                """.formatted(config))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void atualizarAnuidadeSemPermissaoDeveRetornar403() throws Exception {
+        Long config = insertConfiguracaoAnuidade(2026, bd("180.00"));
+        Long titular = insertAssociado("Titular", LocalDate.of(1980, 1, 1), "TITULAR", null, "11910000001");
+        Long anuidade = insertAnuidade(titular, config, bd("180.00"), "PENDENTE");
+
+        enviar(patch("/anuidades/{id}", anuidade), semPermissao(), """
+                {
+                  "valor": 220.00
+                }
+                """)
+                .andExpect(status().isForbidden());
+    }
+
     @Test
     void criarAnuidadesParaTodosOsTitularesDeveGerarSomenteParaTitulares() throws Exception {
         Long config = insertConfiguracaoAnuidade(2026, bd("180.00"));

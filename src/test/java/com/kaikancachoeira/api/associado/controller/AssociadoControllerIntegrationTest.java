@@ -21,6 +21,80 @@ class AssociadoControllerIntegrationTest extends ControllerIntegrationTest {
         return auth("ASSOCIADOS_MENU", "ASSOCIADOS_LEITURA", "ANUIDADES_MENU", "ANUIDADES_LEITURA");
     }
 
+    private String semPermissao() {
+        return auth("VENDAS_MENU");
+    }
+
+    @Test
+    void listarSemPermissaoDeveRetornar403() throws Exception {
+        enviar(get("/associados").param("ano", "2026"), semPermissao(), null)
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void criarSemPermissaoDeveRetornar403() throws Exception {
+        enviar(post("/associados"), semPermissao(), """
+                {
+                  "nome": "Carlos",
+                  "numeroContato": "11911112222",
+                  "dataNascimento": null,
+                  "tipo": "TITULAR",
+                  "titularId": null
+                }
+                """)
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void atualizarSemPermissaoDeveRetornar403() throws Exception {
+        Long id = insertAssociado("Lucas", LocalDate.of(1990, 5, 5), "TITULAR", null, "11922223333");
+
+        enviar(put("/associados/{id}", id), semPermissao(), """
+                {
+                  "nome": "Lucas Atualizado",
+                  "numeroContato": "11933334444",
+                  "dataNascimento": "1991-06-06",
+                  "tipo": "DEPENDENTE",
+                  "titularId": null
+                }
+                """)
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void excluirSemPermissaoDeveRetornar403() throws Exception {
+        Long id = insertAssociado("Para Remover", LocalDate.of(1980, 1, 1), "TITULAR", null, "11955556666");
+
+        enviar(delete("/associados/{id}", id), semPermissao(), null)
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void registrarPagamentoSemPermissaoDeveRetornar403() throws Exception {
+        Long config = insertConfiguracaoAnuidade(2026, bd("180.00"));
+        Long associado = insertAssociado("Titular", LocalDate.of(1980, 2, 2), "TITULAR", null, "11977778888");
+        Long anuidade = insertAnuidade(associado, config, bd("180.00"), "PENDENTE");
+
+        enviar(post("/associados/{id}/pagamentos", associado), semPermissao(), """
+                {
+                  "anuidadeId": %d,
+                  "valor": 180.00
+                }
+                """.formatted(anuidade))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void excluirPagamentoSemPermissaoDeveRetornar403() throws Exception {
+        Long config = insertConfiguracaoAnuidade(2026, bd("180.00"));
+        Long associado = insertAssociado("Titular", LocalDate.of(1980, 2, 2), "TITULAR", null, "11977778888");
+        Long anuidade = insertAnuidade(associado, config, bd("180.00"), "PAGO");
+        Long pagamento = insertPagamentoAnuidade(anuidade, bd("180.00"));
+
+        enviar(delete("/associados/{idAssociado}/pagamentos/{idPagamento}", associado, pagamento), semPermissao(), null)
+                .andExpect(status().isForbidden());
+    }
+
     @Test
     void listarDeveFiltrarPorAnoTipoStatusEIdade() throws Exception {
         Long config = insertConfiguracaoAnuidade(2026, bd("180.00"));

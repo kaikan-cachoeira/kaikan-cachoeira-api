@@ -20,6 +20,48 @@ class ConfiguracaoAnuidadeControllerIntegrationTest extends ControllerIntegratio
         return auth("ANUIDADES_MENU", "ANUIDADES_LEITURA");
     }
 
+    private String semPermissao() {
+        return auth("VENDAS_MENU");
+    }
+
+    @Test
+    void listarSemPermissaoDeveRetornar403() throws Exception {
+        enviar(get("/config-anuidades"), semPermissao(), null)
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void criarSemPermissaoDeveRetornar403() throws Exception {
+        enviar(post("/config-anuidades"), semPermissao(), """
+                {
+                  "ano": 2027,
+                  "valor": 180.00
+                }
+                """)
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void atualizarSemPermissaoDeveRetornar403() throws Exception {
+        Long id = insertConfiguracaoAnuidade(2027, bd("180.00"));
+
+        enviar(put("/config-anuidades/{id}", id), semPermissao(), """
+                {
+                  "ano": 2028,
+                  "valor": 200.00
+                }
+                """)
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void excluirSemPermissaoDeveRetornar403() throws Exception {
+        Long id = insertConfiguracaoAnuidade(2027, bd("180.00"));
+
+        enviar(delete("/config-anuidades/{id}", id), semPermissao(), null)
+                .andExpect(status().isForbidden());
+    }
+
     @Test
     void listarDeveRetornarTodasAsConfiguracoes() throws Exception {
         insertConfiguracaoAnuidade(2025, bd("100.00"));
