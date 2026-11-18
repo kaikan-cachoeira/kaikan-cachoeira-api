@@ -6,16 +6,19 @@ import com.kaikancachoeira.api.associado.dto.AssociadoResponse;
 import com.kaikancachoeira.api.associado.entity.Associado;
 import com.kaikancachoeira.api.associado.enums.StatusAnuidade;
 import com.kaikancachoeira.api.associado.enums.TipoAssociado;
+import com.kaikancachoeira.api.associado.repository.AssociadoListaRow;
 import com.kaikancachoeira.api.associado.repository.AssociadoRepository;
 import com.kaikancachoeira.api.common.dto.PaginaResponse;
 import com.kaikancachoeira.api.common.exception.ConflitoException;
 import com.kaikancachoeira.api.common.exception.RecursoNaoEncontradoException;
 import com.kaikancachoeira.api.common.exception.ValidacaoException;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.Period;
 
 @Service
 public class AssociadoService {
@@ -37,7 +40,7 @@ public class AssociadoService {
             int page,
             int size
     ) {
-        return PaginaResponse.de(repository.buscar(
+        Page<AssociadoListaRow> pagina = repository.buscar(
                 q,
                 dataInicio,
                 dataFim,
@@ -45,7 +48,9 @@ public class AssociadoService {
                 ano,
                 status,
                 PageRequest.of(page, size)
-        ));
+        );
+
+        return PaginaResponse.de(pagina.map(this::paraResponse));
     }
 
     @Transactional
@@ -112,5 +117,22 @@ public class AssociadoService {
         if (duplicado) {
             throw new ConflitoException("ASSOCIADO_DUPLICADO", "Já existe um associado com este nome.");
         }
+    }
+
+    private AssociadoListaResponse paraResponse(AssociadoListaRow row) {
+        return new AssociadoListaResponse(
+                row.id(),
+                row.nome(),
+                row.numeroContato(),
+                idade(row.dataNascimento()),
+                row.dataNascimento(),
+                row.tipo(),
+                row.titularId(),
+                row.status()
+        );
+    }
+
+    private Integer idade(LocalDate dataNascimento) {
+        return dataNascimento == null ? null : Period.between(dataNascimento, LocalDate.now()).getYears();
     }
 }

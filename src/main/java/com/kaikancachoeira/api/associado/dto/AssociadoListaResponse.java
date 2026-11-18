@@ -12,16 +12,18 @@ public record AssociadoListaResponse(
         Long id,
         String nome,
         String numeroContato,
+        Integer idade,
         LocalDate dataNascimento,
         TipoAssociado tipo,
         Long titularId,
         StatusAnuidade status
 ) {
-    public static AssociadoListaResponse de(Associado associado, StatusAnuidade status) {
+    public static AssociadoListaResponse de(Associado associado, Integer idade, StatusAnuidade status) {
         return new AssociadoListaResponse(
                 associado.getId(),
                 associado.getNome(),
                 associado.getNumeroContato(),
+                idade,
                 associado.getDataNascimento(),
                 associado.getTipo(),
                 associado.getTitular() == null ? null : associado.getTitular().getId(),

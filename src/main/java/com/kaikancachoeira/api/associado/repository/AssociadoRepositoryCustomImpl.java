@@ -1,6 +1,5 @@
 package com.kaikancachoeira.api.associado.repository;
 
-import com.kaikancachoeira.api.associado.dto.AssociadoListaResponse;
 import com.kaikancachoeira.api.associado.entity.Associado;
 import com.kaikancachoeira.api.associado.entity.Anuidade;
 import com.kaikancachoeira.api.associado.entity.ConfiguracaoAnuidade;
@@ -31,7 +30,7 @@ public class AssociadoRepositoryCustomImpl implements AssociadoRepositoryCustom 
     private EntityManager entityManager;
 
     @Override
-    public Page<AssociadoListaResponse> buscar(
+    public Page<AssociadoListaRow> buscar(
             String q,
             LocalDate dataInicio,
             LocalDate dataFim,
@@ -42,7 +41,7 @@ public class AssociadoRepositoryCustomImpl implements AssociadoRepositoryCustom 
     ) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
 
-        CriteriaQuery<AssociadoListaResponse> query = cb.createQuery(AssociadoListaResponse.class);
+        CriteriaQuery<AssociadoListaRow> query = cb.createQuery(AssociadoListaRow.class);
         Root<Associado> associado = query.from(Associado.class);
         Join<Associado, Associado> titular = associado.join("titular", JoinType.LEFT);
         Join<Associado, Anuidade> anuidade = associado.join("anuidades", JoinType.LEFT);
@@ -56,7 +55,7 @@ public class AssociadoRepositoryCustomImpl implements AssociadoRepositoryCustom 
         List<Predicate> predicados = criarPredicados(cb, associado, titular, q, dataInicio, dataFim, tipo, statusDaAnuidade, status);
 
         query.select(cb.construct(
-                        AssociadoListaResponse.class,
+                        AssociadoListaRow.class,
                         associado.get("id"),
                         associado.get("nome"),
                         associado.get("numeroContato"),
@@ -69,7 +68,7 @@ public class AssociadoRepositoryCustomImpl implements AssociadoRepositoryCustom 
                 .distinct(true)
                 .orderBy(cb.asc(associado.get("nome")), cb.asc(associado.get("id")));
 
-        List<AssociadoListaResponse> itens = entityManager.createQuery(query)
+        List<AssociadoListaRow> itens = entityManager.createQuery(query)
                 .setFirstResult(Math.toIntExact(pageable.getOffset()))
                 .setMaxResults(pageable.getPageSize())
                 .getResultList();
