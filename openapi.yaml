@@ -34,6 +34,8 @@ tags:
   description: Desconto por unidade aplicado a produtos do cardápio durante o evento.
 - name: Relatórios
   description: "Relatório individual por evento com vendas, custos, doações e lucro."
+- name: Dashboard
+  description: "Indicadores financeiros, de vendas e de estoque dos eventos."
 - name: Fiados
   description: Consulta e quitação de fichas vendidas a prazo.
 - name: Caixa
@@ -886,7 +888,7 @@ paths:
       - Produtos
       summary: Cadastra produto
       description: Cria um produto a partir dos dados informados.
-      operationId: criar
+      operationId: criarComFoto
       requestBody:
         description: Dados para cadastro do produto
         content:
@@ -908,14 +910,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
               examples:
-                Dados inválidos:
-                  description: Dados inválidos
+                Arquivo inválido:
+                  description: Arquivo inválido
                   value:
-                    codigo: VALIDACAO
-                    mensagem: Dados inválidos
-                    campos:
-                    - campo: nome
-                      mensagem: Nome é obrigatório
+                    codigo: ARQUIVO_INVALIDO
+                    mensagem: "Formato aceito: JPG, PNG ou WEBP."
+                    campos: []
+        "409":
+          description: Já existe um produto com este nome
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Produto duplicado:
+                  description: Produto duplicado
+                  value:
+                    codigo: PRODUTO_DUPLICADO
+                    mensagem: Já existe um produto com este nome.
+                    campos: []
   /produtos/{id}/movimentacoes:
     get:
       tags:
@@ -1230,7 +1243,7 @@ paths:
         Cria um evento a partir dos dados informados.
         A data e hora de encerramento previstas devem ser posteriores
         à data e hora de início previstas.
-      operationId: criar_1
+      operationId: criar
       requestBody:
         description: Dados para cadastro do evento
         content:
@@ -2048,7 +2061,7 @@ paths:
         Registra uma doação em dinheiro, de produto ou de reabastecimento.
         Somente o reabastecimento altera o estoque: cria um lote sem custo e a movimentação DOACAO.
         O evento deve existir e não pode estar encerrado.
-      operationId: criar_2
+      operationId: criar_1
       requestBody:
         description: Dados da doação
         content:
@@ -2112,7 +2125,7 @@ paths:
       - Categorias
       summary: Cadastra categoria
       description: Cria uma categoria a partir dos dados informados.
-      operationId: criar_3
+      operationId: criar_2
       requestBody:
         description: Dados para cadastro da categoria
         content:
@@ -2897,6 +2910,173 @@ paths:
                     codigo: RECURSO_NAO_ENCONTRADO
                     mensagem: "Lote não encontrado: 123"
                     campos: []
+  /dashboard/resumo:
+    get:
+      tags:
+      - Dashboard
+      summary: Consulta o resumo do dashboard
+      description: "Retorna o total de eventos, a receita total, o custo total e o\
+        \ lucro total no período."
+      operationId: consultarResumo
+      parameters:
+      - name: dataInicio
+        in: query
+        description: "Data e hora inicial do período, em ISO-8601"
+        required: false
+        schema:
+          type: string
+          format: date-time
+        example: 2026-05-01T00:00:00Z
+      - name: dataFim
+        in: query
+        description: "Data e hora final do período, em ISO-8601"
+        required: false
+        schema:
+          type: string
+          format: date-time
+        example: 2026-10-31T23:59:59Z
+      responses:
+        "200":
+          description: Resumo retornado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DashboardResumoResponse"
+        "400":
+          description: Parâmetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Período inválido:
+                  description: Período inválido
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: dataFim
+                      mensagem: A data fim deve ser posterior ou igual à data início
+  /dashboard/produtos-mais-vendidos:
+    get:
+      tags:
+      - Dashboard
+      summary: Lista os produtos mais vendidos
+      description: "Retorna os produtos ordenados por receita, com participação e\
+        \ participação acumulada."
+      operationId: listarProdutosMaisVendidos
+      parameters:
+      - name: dataInicio
+        in: query
+        description: "Data e hora inicial do período, em ISO-8601"
+        required: false
+        schema:
+          type: string
+          format: date-time
+        example: 2026-05-01T00:00:00Z
+      - name: dataFim
+        in: query
+        description: "Data e hora final do período, em ISO-8601"
+        required: false
+        schema:
+          type: string
+          format: date-time
+        example: 2026-10-31T23:59:59Z
+      - name: limite
+        in: query
+        description: Quantidade máxima de itens retornados
+        required: false
+        schema:
+          type: integer
+          format: int32
+        example: 10
+      responses:
+        "200":
+          description: Produtos retornados
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DashboardProdutoMaisVendidoResponse"
+        "400":
+          description: Parâmetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Limite inválido:
+                  description: Limite inválido
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: limite
+                      mensagem: O limite deve ser maior que zero
+  /dashboard/eventos:
+    get:
+      tags:
+      - Dashboard
+      summary: Lista eventos do dashboard
+      description: "Retorna a série financeira por evento, em ordem cronológica."
+      operationId: listarEventos
+      parameters:
+      - name: dataInicio
+        in: query
+        description: "Data e hora inicial do período, em ISO-8601"
+        required: false
+        schema:
+          type: string
+          format: date-time
+        example: 2026-05-01T00:00:00Z
+      - name: dataFim
+        in: query
+        description: "Data e hora final do período, em ISO-8601"
+        required: false
+        schema:
+          type: string
+          format: date-time
+        example: 2026-10-31T23:59:59Z
+      responses:
+        "200":
+          description: Eventos retornados
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DashboardEventoResponse"
+        "400":
+          description: Parâmetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Período inválido:
+                  description: Período inválido
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: dataFim
+                      mensagem: A data fim deve ser posterior ou igual à data início
+  /dashboard/estoque:
+    get:
+      tags:
+      - Dashboard
+      summary: Consulta o estoque atual
+      description: Retorna o valor total do estoque e os alertas de produtos abaixo
+        do mínimo ou negativos.
+      operationId: consultarEstoque
+      responses:
+        "200":
+          description: Estoque retornado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DashboardEstoqueResponse"
   /eventos/{eventoId}/caixa/{lancamentoId}:
     delete:
       tags:
@@ -2959,6 +3139,7 @@ components:
   schemas:
     ProdutoRequest:
       type: object
+      description: Dados para cadastro do produto (JSON)
       properties:
         nome:
           type: string
@@ -4725,6 +4906,107 @@ components:
           format: int32
           description: Total de páginas
           example: 3
+    DashboardResumoResponse:
+      type: object
+      description: Resumo financeiro e operacional do dashboard
+      properties:
+        totalEventos:
+          type: integer
+          format: int64
+          description: Quantidade total de eventos no período
+        receitaTotal:
+          type: number
+          description: Receita total no período
+        custoTotal:
+          type: number
+          description: Custo total no período
+        lucroTotal:
+          type: number
+          description: Lucro total no período
+    DashboardProdutoMaisVendidoResponse:
+      type: object
+      description: Produto com maior receita no período
+      properties:
+        produtoId:
+          type: integer
+          format: int64
+          description: ID do produto
+        nome:
+          type: string
+          description: Nome do produto
+        quantidade:
+          type: integer
+          format: int64
+          description: Quantidade vendida
+        receita:
+          type: number
+          description: Receita total do produto
+        participacao:
+          type: number
+          description: Participação percentual sobre a receita total da lista
+        participacaoAcumulada:
+          type: number
+          description: Participação percentual acumulada
+    DashboardEventoResponse:
+      type: object
+      description: Série financeira por evento para o dashboard
+      properties:
+        eventoId:
+          type: integer
+          format: int64
+          description: ID do evento
+        nome:
+          type: string
+          description: Nome do evento
+        data:
+          type: string
+          format: date-time
+          description: Data de início real do evento
+        receita:
+          type: number
+          description: Receita do evento
+        custo:
+          type: number
+          description: Custo do evento
+        lucro:
+          type: number
+          description: Lucro do evento
+    DashboardEstoqueResponse:
+      type: object
+      description: Resumo atual do estoque para o dashboard
+      properties:
+        valorEstoque:
+          type: number
+          description: Valor total do estoque atual
+        produtosAbaixoDoMinimo:
+          type: array
+          description: Produtos abaixo do estoque mínimo
+          items:
+            $ref: "#/components/schemas/DashboardProdutoAlertaResponse"
+        produtosNegativos:
+          type: array
+          description: Produtos com quantidade negativa
+          items:
+            $ref: "#/components/schemas/DashboardProdutoAlertaResponse"
+    DashboardProdutoAlertaResponse:
+      type: object
+      description: Produto com alerta de estoque
+      properties:
+        produtoId:
+          type: integer
+          format: int64
+          description: ID do produto
+        nome:
+          type: string
+          description: Nome do produto
+        quantidadeAtual:
+          type: integer
+          format: int32
+          description: Quantidade atual em estoque
+        estoqueMinimo:
+          type: integer
+          format: int32
+          description: Estoque mínimo configurado
     ExclusaoCaixaResponse:
       type: object
       description: Resposta da exclusão de um lançamento de caixa.
