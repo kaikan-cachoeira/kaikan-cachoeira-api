@@ -31,6 +31,22 @@ class AssociadoConstraintsTest extends DbIntegrationTest {
     }
 
     @Test
+    void titularNaoPodeInformarTitularResponsavel() {
+        Long titular = insertAssociado("João", LocalDate.of(1975, 5, 20), "TITULAR", null, "11988888888");
+
+        assertViolacao(() -> jdbc.update("insert into associado (nome, data_nascimento, tipo, titular_id, numero_contato) values (?, ?, ?, ?, ?)",
+                "Titular Invalido", LocalDate.of(1980, 1, 1), "TITULAR", titular, "11977777777"),
+                "chk_titular");
+    }
+
+    @Test
+    void dependenteDeveInformarTitularResponsavel() {
+        assertViolacao(() -> jdbc.update("insert into associado (nome, data_nascimento, tipo, titular_id, numero_contato) values (?, ?, ?, ?, ?)",
+                "Dependente Invalido", LocalDate.of(2010, 1, 1), "DEPENDENTE", null, "11966666666"),
+                "chk_titular");
+    }
+
+    @Test
     void nomeDeveSerUnico() {
         insertAssociado("Ana", LocalDate.of(1985, 3, 10), "TITULAR", null, "11966666666");
 
