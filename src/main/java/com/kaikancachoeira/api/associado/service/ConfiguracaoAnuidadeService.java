@@ -4,6 +4,7 @@ import com.kaikancachoeira.api.associado.dto.ConfiguracaoAnuidadeRequest;
 import com.kaikancachoeira.api.associado.dto.ConfiguracaoAnuidadeResponse;
 import com.kaikancachoeira.api.associado.entity.ConfiguracaoAnuidade;
 import com.kaikancachoeira.api.associado.repository.ConfiguracaoAnuidadeRepository;
+import com.kaikancachoeira.api.associado.repository.PagamentoRepository;
 import com.kaikancachoeira.api.common.exception.ConflitoException;
 import com.kaikancachoeira.api.common.exception.RecursoNaoEncontradoException;
 import org.springframework.stereotype.Service;
@@ -15,9 +16,11 @@ import java.util.List;
 public class ConfiguracaoAnuidadeService {
 
     private final ConfiguracaoAnuidadeRepository repository;
+    private final PagamentoRepository pagamentoRepository;
 
-    public ConfiguracaoAnuidadeService(ConfiguracaoAnuidadeRepository repository) {
+    public ConfiguracaoAnuidadeService(ConfiguracaoAnuidadeRepository repository, PagamentoRepository pagamentoRepository) {
         this.repository = repository;
+        this.pagamentoRepository = pagamentoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -50,6 +53,14 @@ public class ConfiguracaoAnuidadeService {
     @Transactional
     public void excluir(Integer id) {
         ConfiguracaoAnuidade configuracao = buscar(id);
+
+        if (pagamentoRepository.existsByAnuidade_ConfiguracaoAnuidadeId(id)) {
+            throw new ConflitoException(
+                    "CONFIGURACAO_ANUIDADE_COM_PAGAMENTOS",
+                    "Não é possível excluir esta configuração porque existem pagamentos vinculados às anuidades geradas por ela."
+            );
+        }
+
         repository.delete(configuracao);
         repository.flush();
     }

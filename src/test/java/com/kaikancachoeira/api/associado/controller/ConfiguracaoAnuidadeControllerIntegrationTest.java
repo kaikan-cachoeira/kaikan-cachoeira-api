@@ -126,17 +126,17 @@ class ConfiguracaoAnuidadeControllerIntegrationTest extends ControllerIntegratio
     }
 
     @Test
-    void excluirConfiguracaoDeveRemoverAnuidadesEPagamentosVinculados() throws Exception {
+    void excluirConfiguracaoComPagamentoDeveRetornar409() throws Exception {
         Long config = insertConfiguracaoAnuidade(2026, bd("180.00"));
         Long associado = insertAssociado("Titular", LocalDate.of(1980, 2, 2), "TITULAR", null, "11977778888");
         Long anuidade = insertAnuidade(associado, config, bd("180.00"), "PAGO");
         Long pagamento = insertPagamentoAnuidade(anuidade, bd("180.00"));
 
         enviar(delete("/config-anuidades/{id}", config), permissao(), null)
-                .andExpect(status().isNoContent());
+                .andExpect(status().isConflict());
 
-        org.assertj.core.api.Assertions.assertThat(count("select count(*) from configuracao_anuidade where id = ?", config)).isZero();
-        org.assertj.core.api.Assertions.assertThat(count("select count(*) from anuidade where id = ?", anuidade)).isZero();
-        org.assertj.core.api.Assertions.assertThat(count("select count(*) from pagamento where id = ?", pagamento)).isZero();
+        org.assertj.core.api.Assertions.assertThat(count("select count(*) from configuracao_anuidade where id = ?", config)).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(count("select count(*) from anuidade where id = ?", anuidade)).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(count("select count(*) from pagamento where id = ?", pagamento)).isEqualTo(1);
     }
 }

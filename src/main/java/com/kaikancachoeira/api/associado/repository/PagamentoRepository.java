@@ -16,4 +16,7 @@ public interface PagamentoRepository extends JpaRepository<Pagamento, Long> {
             Long associadoId,
             Integer configuracaoAnuidadeId
     );
+
+    boolean existsByAnuidade_ConfiguracaoAnuidadeId(Integer configuracaoAnuidadeId);
+
 }
