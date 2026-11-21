@@ -12,6 +12,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequestMapping("/anuidades")
 @Validated
 public class AnuidadeController implements AnuidadeApi {
 
@@ -21,7 +22,6 @@ public class AnuidadeController implements AnuidadeApi {
         this.service = service;
     }
 
-    @PostMapping("/anuidades")
     @PreAuthorize("hasAuthority('ANUIDADES_MENU')")
     @Override
     public ResponseEntity<Void> criarParaTodos(@RequestBody @Valid AnuidadeRequest request) {
@@ -29,7 +29,7 @@ public class AnuidadeController implements AnuidadeApi {
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
-    @PostMapping("/anuidades/associados/{idAssociado}")
+    @PostMapping("/associados/{idAssociado}")
     @PreAuthorize("hasAuthority('ANUIDADES_MENU')")
     @Override
     public ResponseEntity<Void> criarParaAssociado(@PathVariable Long idAssociado,
@@ -38,7 +38,7 @@ public class AnuidadeController implements AnuidadeApi {
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
-    @PatchMapping("/anuidades/{id}")
+    @PatchMapping("/{id}")
     @PreAuthorize("hasAuthority('ANUIDADES_MENU')")
     @Override
     public ResponseEntity<AnuidadeResponse> atualizarValor(@PathVariable Long id,
