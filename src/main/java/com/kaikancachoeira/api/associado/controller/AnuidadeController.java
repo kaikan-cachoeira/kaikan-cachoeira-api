@@ -22,6 +22,7 @@ public class AnuidadeController implements AnuidadeApi {
         this.service = service;
     }
 
+    @PostMapping
     @PreAuthorize("hasAuthority('ANUIDADES_MENU')")
     @Override
     public ResponseEntity<Void> criarParaTodos(@RequestBody @Valid AnuidadeRequest request) {
