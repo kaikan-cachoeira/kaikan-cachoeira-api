@@ -15,6 +15,8 @@ tags:
 - name: Cardápio do evento
   description: "Produtos do cardápio de um evento: itens do estoque e itens produzidos\
     \ no evento."
+- name: Anuidades
+  description: Criação e atualização de anuidades dos associados.
 - name: Eventos
   description: "Consulta, cadastro e atualização de eventos."
 - name: Autenticação
@@ -26,6 +28,8 @@ tags:
   description: Consulta e gerenciamento das categorias de produtos.
 - name: Custos do evento
   description: Consulta e gerenciamento dos custos de um evento.
+- name: Configurações de anuidade
+  description: Cadastro e manutenção das configurações de anuidade por ano.
 - name: Movimentações de estoque
   description: Registro de movimentações e consulta de lotes e históricos do estoque.
 - name: Vendas
@@ -34,6 +38,8 @@ tags:
   description: Desconto por unidade aplicado a produtos do cardápio durante o evento.
 - name: Relatórios
   description: "Relatório individual por evento com vendas, custos, doações e lucro."
+- name: Associados
+  description: "Cadastro, consulta e controle de anuidades dos associados."
 - name: Fiados
   description: Consulta e quitação de fichas vendidas a prazo.
 - name: Caixa
@@ -710,13 +716,73 @@ paths:
                     mensagem: A quantidade não pode ser menor que a já consumida do
                       lote.
                     campos: []
+  /config-anuidades/{id}:
+    put:
+      tags:
+      - Configurações de anuidade
+      summary: Atualiza configuração de anuidade
+      description: Atualiza ano e valor de uma configuração existente.
+      operationId: atualizar_4
+      parameters:
+      - name: id
+        in: path
+        description: ID da configuração
+        required: true
+        schema:
+          type: integer
+          format: int32
+      requestBody:
+        description: Dados da configuração
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfiguracaoAnuidadeRequest"
+        required: true
+      responses:
+        "200":
+          description: Configuração atualizada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConfiguracaoAnuidadeResponse"
+        "404":
+          description: Configuração não encontrada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConfiguracaoAnuidadeResponse"
+        "409":
+          description: Ano já cadastrado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConfiguracaoAnuidadeResponse"
+    delete:
+      tags:
+      - Configurações de anuidade
+      summary: Exclui configuração de anuidade
+      description: Remove uma configuração e suas anuidades vinculadas.
+      operationId: excluir_2
+      parameters:
+      - name: id
+        in: path
+        description: ID da configuração
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "204":
+          description: Configuração excluída
+        "404":
+          description: Configuração não encontrada
   /categorias/{id}:
     put:
       tags:
       - Categorias
       summary: Atualiza categoria
       description: Atualiza os dados de uma categoria existente.
-      operationId: atualizar_4
+      operationId: atualizar_5
       parameters:
       - name: id
         in: path
@@ -785,7 +851,7 @@ paths:
       - Categorias
       summary: Exclui categoria
       description: Solicita a exclusão da categoria indicada.
-      operationId: excluir_2
+      operationId: excluir_3
       parameters:
       - name: id
         in: path
@@ -824,6 +890,66 @@ paths:
                     mensagem: Não é possível excluir esta categoria porque existem
                       produtos vinculados a ela.
                     campos: []
+  /associados/{id}:
+    put:
+      tags:
+      - Associados
+      summary: Atualiza associado
+      description: Atualiza os dados de um associado existente.
+      operationId: atualizar_6
+      parameters:
+      - name: id
+        in: path
+        description: ID do associado
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        description: Dados do associado
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssociadoRequest"
+        required: true
+      responses:
+        "200":
+          description: Associado atualizado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AssociadoResponse"
+        "404":
+          description: Associado não encontrado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AssociadoResponse"
+        "409":
+          description: Nome duplicado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AssociadoResponse"
+    delete:
+      tags:
+      - Associados
+      summary: Exclui associado
+      description: Remove um associado existente.
+      operationId: excluir_4
+      parameters:
+      - name: id
+        in: path
+        description: ID do associado
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "204":
+          description: Associado excluído
+        "404":
+          description: Associado não encontrado
   /produtos:
     get:
       tags:
@@ -886,7 +1012,7 @@ paths:
       - Produtos
       summary: Cadastra produto
       description: Cria um produto a partir dos dados informados.
-      operationId: criar
+      operationId: criarComFoto
       requestBody:
         description: Dados para cadastro do produto
         content:
@@ -908,14 +1034,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErroResponse"
               examples:
-                Dados inválidos:
-                  description: Dados inválidos
+                Arquivo inválido:
+                  description: Arquivo inválido
                   value:
-                    codigo: VALIDACAO
-                    mensagem: Dados inválidos
-                    campos:
-                    - campo: nome
-                      mensagem: Nome é obrigatório
+                    codigo: ARQUIVO_INVALIDO
+                    mensagem: "Formato aceito: JPG, PNG ou WEBP."
+                    campos: []
+        "409":
+          description: Já existe um produto com este nome
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Produto duplicado:
+                  description: Produto duplicado
+                  value:
+                    codigo: PRODUTO_DUPLICADO
+                    mensagem: Já existe um produto com este nome.
+                    campos: []
   /produtos/{id}/movimentacoes:
     get:
       tags:
@@ -1230,7 +1367,7 @@ paths:
         Cria um evento a partir dos dados informados.
         A data e hora de encerramento previstas devem ser posteriores
         à data e hora de início previstas.
-      operationId: criar_1
+      operationId: criar
       requestBody:
         description: Dados para cadastro do evento
         content:
@@ -2048,7 +2185,7 @@ paths:
         Registra uma doação em dinheiro, de produto ou de reabastecimento.
         Somente o reabastecimento altera o estoque: cria um lote sem custo e a movimentação DOACAO.
         O evento deve existir e não pode estar encerrado.
-      operationId: criar_2
+      operationId: criar_1
       requestBody:
         description: Dados da doação
         content:
@@ -2091,13 +2228,63 @@ paths:
                     codigo: EVENTO_ENCERRADO
                     mensagem: O evento está encerrado.
                     campos: []
+  /config-anuidades:
+    get:
+      tags:
+      - Configurações de anuidade
+      summary: Lista configurações de anuidade
+      description: Retorna todas as configurações cadastradas em ordem crescente de
+        ano.
+      operationId: listar_5
+      responses:
+        "200":
+          description: Lista retornada
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConfiguracaoAnuidadeResponse"
+    post:
+      tags:
+      - Configurações de anuidade
+      summary: Cadastra configuração de anuidade
+      description: Cria a configuração de anuidade para um ano específico.
+      operationId: criar_2
+      requestBody:
+        description: Dados da configuração
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfiguracaoAnuidadeRequest"
+        required: true
+      responses:
+        "201":
+          description: Configuração criada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConfiguracaoAnuidadeResponse"
+        "409":
+          description: Ano já cadastrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito:
+                  description: Conflito
+                  value:
+                    codigo: ANUIDADE_DUPLICADA
+                    mensagem: Já existe uma configuração de anuidade para este ano.
+                    campos: []
   /categorias:
     get:
       tags:
       - Categorias
       summary: Lista categorias
       description: Retorna as categorias disponíveis para classificação dos produtos.
-      operationId: listar_5
+      operationId: listar_6
       responses:
         "200":
           description: Lista de categorias retornada
@@ -2338,6 +2525,242 @@ paths:
                 mensagem: Usuário ou senha inválidos
                 campos: []
       security: []
+  /associados:
+    get:
+      tags:
+      - Associados
+      summary: Lista associados
+      description: "Retorna os associados com filtros por nome, idade, tipo e status\
+        \ da anuidade do ano informado."
+      operationId: listar_7
+      parameters:
+      - name: q
+        in: query
+        description: Busca por nome do associado ou do titular
+        required: false
+        schema:
+          type: string
+      - name: dataInicio
+        in: query
+        description: Filtra data de nascimento a partir de
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: dataFim
+        in: query
+        description: Filtra data de nascimento até
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: tipo
+        in: query
+        description: Tipo do associado
+        required: false
+        schema:
+          type: string
+          enum:
+          - TITULAR
+          - DEPENDENTE
+      - name: ano
+        in: query
+        description: Ano da anuidade
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - name: status
+        in: query
+        description: Status da anuidade
+        required: false
+        schema:
+          type: string
+          enum:
+          - PENDENTE
+          - PAGO
+          - ISENTO
+      - name: page
+        in: query
+        description: Índice da página
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+          minimum: 0
+      - name: size
+        in: query
+        description: Tamanho da página
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      responses:
+        "200":
+          description: Lista de associados retornada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PaginaResponseAssociadoListaResponse"
+        "400":
+          description: Parâmetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Parâmetro inválido:
+                  description: Parâmetro inválido
+                  value:
+                    codigo: REQUISICAO_INVALIDA
+                    mensagem: Valor inválido para o parâmetro
+                    campos:
+                    - campo: ano
+                      mensagem: Campo obrigatório
+    post:
+      tags:
+      - Associados
+      summary: Cadastra associado
+      description: Cria um associado titular ou dependente.
+      operationId: criar_4
+      requestBody:
+        description: Dados do associado
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssociadoRequest"
+        required: true
+      responses:
+        "201":
+          description: Associado criado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AssociadoResponse"
+        "400":
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Dados inválidos:
+                  description: Dados inválidos
+                  value:
+                    codigo: VALIDACAO
+                    mensagem: Dados inválidos
+                    campos:
+                    - campo: titularId
+                      mensagem: Dependente deve informar o titular responsável.
+        "409":
+          description: Nome duplicado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+              examples:
+                Conflito:
+                  description: Conflito
+                  value:
+                    codigo: ASSOCIADO_DUPLICADO
+                    mensagem: Já existe um associado com este nome.
+                    campos: []
+  /associados/{id}/pagamentos:
+    post:
+      tags:
+      - Associados
+      summary: Registra pagamento de anuidade
+      description: Registra um pagamento para a anuidade informada do associado.
+      operationId: registrarPagamento
+      parameters:
+      - name: id
+        in: path
+        description: ID do associado
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        description: Dados do pagamento
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PagamentoRequest"
+        required: true
+      responses:
+        "201":
+          description: Pagamento registrado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PagamentoResponse"
+        "404":
+          description: Associado ou anuidade não encontrados
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PagamentoResponse"
+        "409":
+          description: Anuidade isenta
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PagamentoResponse"
+  /anuidades:
+    post:
+      tags:
+      - Anuidades
+      summary: Cria anuidades para todos os titulares
+      description: Gera uma anuidade para cada associado titular com base na configuração
+        informada.
+      operationId: criarParaTodos
+      requestBody:
+        description: Dados da criação em massa
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnuidadeRequest"
+        required: true
+      responses:
+        "201":
+          description: Anuidades criadas
+        "404":
+          description: Configuração não encontrada
+        "409":
+          description: Anuidade já existente
+  /anuidades/associados/{idAssociado}:
+    post:
+      tags:
+      - Anuidades
+      summary: Cria anuidade para associado
+      description: Cria a anuidade apenas para o associado informado.
+      operationId: criarParaAssociado
+      parameters:
+      - name: idAssociado
+        in: path
+        description: ID do associado
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        description: Dados da criação
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnuidadeRequest"
+        required: true
+      responses:
+        "201":
+          description: Anuidade criada
+        "404":
+          description: Associado ou configuração não encontrados
+        "409":
+          description: Anuidade já existente
   /eventos/{eventoId}/produtos/{produtoEventoId}/desconto:
     delete:
       tags:
@@ -2560,6 +2983,41 @@ paths:
                     codigo: FIADO_JA_QUITADO
                     mensagem: O fiado já está quitado.
                     campos: []
+  /anuidades/{id}:
+    patch:
+      tags:
+      - Anuidades
+      summary: Atualiza valor da anuidade
+      description: Altera somente o valor de uma anuidade específica.
+      operationId: atualizarValor
+      parameters:
+      - name: id
+        in: path
+        description: ID da anuidade
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        description: Novo valor
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnuidadeValorRequest"
+        required: true
+      responses:
+        "200":
+          description: Anuidade atualizada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AnuidadeResponse"
+        "404":
+          description: Anuidade não encontrada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AnuidadeResponse"
   /tipos-movimentacao:
     get:
       tags:
@@ -2567,7 +3025,7 @@ paths:
       summary: Lista tipos de movimentação
       description: Retorna os tipos de movimentação cadastrados para uso nas operações
         de estoque.
-      operationId: listar_6
+      operationId: listar_8
       responses:
         "200":
           description: Lista de tipos de movimentação retornada
@@ -2757,7 +3215,7 @@ paths:
       summary: Lista fiados do evento
       description: "Retorna os fiados, do mais recente para o mais antigo. situacao:\
         \ pendente ou quitado; ausente retorna todos. Exige CAIXA_MENU."
-      operationId: listar_7
+      operationId: listar_9
       parameters:
       - name: eventoId
         in: path
@@ -2906,7 +3364,7 @@ paths:
         Corrige registros acidentais (exclusão física), apenas com o evento em andamento.
         Excluir venda de fichas fiada remove o fiado (se pendente); excluir uma quitação reabre o fiado.
         Exige CAIXA_MENU.
-      operationId: excluir_3
+      operationId: excluir_5
       parameters:
       - name: eventoId
         in: path
@@ -2955,10 +3413,38 @@ paths:
                     codigo: FIADO_JA_QUITADO
                     mensagem: O fiado já está quitado.
                     campos: []
+  /associados/{idAssociado}/pagamentos/{idPagamento}:
+    delete:
+      tags:
+      - Associados
+      summary: Exclui pagamento de anuidade
+      description: Remove um pagamento de anuidade vinculado ao associado.
+      operationId: excluirPagamento
+      parameters:
+      - name: idAssociado
+        in: path
+        description: ID do associado
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: idPagamento
+        in: path
+        description: ID do pagamento
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "204":
+          description: Pagamento excluído
+        "404":
+          description: Pagamento não encontrado
 components:
   schemas:
     ProdutoRequest:
       type: object
+      description: Dados para cadastro do produto (JSON)
       properties:
         nome:
           type: string
@@ -3332,6 +3818,33 @@ components:
       - doador
       - eventoId
       - tipo
+    ConfiguracaoAnuidadeRequest:
+      type: object
+      description: Dados para cadastro/atualização de configuração de anuidade.
+      properties:
+        ano:
+          type: integer
+          format: int32
+          example: 2026
+        valor:
+          type: number
+          example: 180.0
+          minimum: 0
+      required:
+      - ano
+      - valor
+    ConfiguracaoAnuidadeResponse:
+      type: object
+      description: Representação de uma configuração de anuidade.
+      properties:
+        id:
+          type: integer
+          format: int32
+        ano:
+          type: integer
+          format: int32
+        valor:
+          type: number
     CategoriaRequest:
       type: object
       properties:
@@ -3364,6 +3877,65 @@ components:
           type:
           - string
           - "null"
+    AssociadoRequest:
+      type: object
+      description: Dados para cadastro/atualização de associado.
+      properties:
+        nome:
+          type: string
+          example: Maria da Silva
+          maxLength: 150
+          minLength: 0
+        numeroContato:
+          type:
+          - string
+          - "null"
+          example: "11999990000"
+          maxLength: 20
+          minLength: 0
+        dataNascimento:
+          type:
+          - string
+          - "null"
+          format: date
+          example: 1980-01-15
+        tipo:
+          type: string
+          enum:
+          - TITULAR
+          - DEPENDENTE
+          example: TITULAR
+        titularId:
+          type:
+          - integer
+          - "null"
+          format: int64
+          example: 1
+      required:
+      - nome
+      - tipo
+    AssociadoResponse:
+      type: object
+      description: Representação de um associado.
+      properties:
+        id:
+          type: integer
+          format: int64
+        nome:
+          type: string
+        numeroContato:
+          type: string
+        dataNascimento:
+          type: string
+          format: date
+        tipo:
+          type: string
+          enum:
+          - TITULAR
+          - DEPENDENTE
+        titularId:
+          type: integer
+          format: int64
     CategoriaResumo:
       type: object
       description: Categoria resumida do produto
@@ -3842,6 +4414,51 @@ components:
           - ESTOQUE_MENU
           items:
             type: string
+    PagamentoRequest:
+      type: object
+      description: Dados para registrar um pagamento de anuidade.
+      properties:
+        anuidadeId:
+          type: integer
+          format: int64
+          example: 10
+        valor:
+          type: number
+          example: 180.0
+          minimum: 0
+      required:
+      - anuidadeId
+      - valor
+    PagamentoResponse:
+      type: object
+      description: Representação de um pagamento de anuidade.
+      properties:
+        id:
+          type: integer
+          format: int64
+        anuidadeId:
+          type: integer
+          format: int64
+        ano:
+          type: integer
+          format: int32
+        valor:
+          type: number
+    AnuidadeRequest:
+      type: object
+      description: Dados para criação de anuidade.
+      properties:
+        idConfAnuidade:
+          type: integer
+          format: int32
+          example: 1
+        valor:
+          type: number
+          example: 180.0
+          minimum: 0
+      required:
+      - idConfAnuidade
+      - valor
     AlteracaoStatusEventoRequest:
       type: object
       properties:
@@ -3956,6 +4573,40 @@ components:
         resumo:
           $ref: "#/components/schemas/ResumoCaixaResponse"
           description: Resumo atualizado do caixa.
+    AnuidadeValorRequest:
+      type: object
+      description: Dados para atualização parcial do valor de uma anuidade.
+      properties:
+        valor:
+          type: number
+          example: 220.0
+          minimum: 0
+      required:
+      - valor
+    AnuidadeResponse:
+      type: object
+      description: Representação de uma anuidade.
+      properties:
+        id:
+          type: integer
+          format: int64
+        associadoId:
+          type: integer
+          format: int64
+        idConfAnuidade:
+          type: integer
+          format: int32
+        ano:
+          type: integer
+          format: int32
+        valor:
+          type: number
+        status:
+          type: string
+          enum:
+          - PENDENTE
+          - PAGO
+          - ISENTO
     TipoMovimentacaoResponse:
       type: object
       properties:
@@ -4705,6 +5356,63 @@ components:
           description: Registros da página
           items:
             $ref: "#/components/schemas/DoacaoResponse"
+        page:
+          type: integer
+          format: int32
+          description: "Índice da página, começando em zero"
+          example: 0
+        size:
+          type: integer
+          format: int32
+          description: Tamanho da página
+          example: 20
+        totalItens:
+          type: integer
+          format: int64
+          description: Total de registros
+          example: 57
+        totalPaginas:
+          type: integer
+          format: int32
+          description: Total de páginas
+          example: 3
+    AssociadoListaResponse:
+      type: object
+      description: Linha da listagem de associados com status da anuidade do ano consultado.
+      properties:
+        id:
+          type: integer
+          format: int64
+        nome:
+          type: string
+        numeroContato:
+          type: string
+        dataNascimento:
+          type: string
+          format: date
+        tipo:
+          type: string
+          enum:
+          - TITULAR
+          - DEPENDENTE
+        titularId:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum:
+          - PENDENTE
+          - PAGO
+          - ISENTO
+    PaginaResponseAssociadoListaResponse:
+      type: object
+      description: Página de resultados. page começa em 0
+      properties:
+        itens:
+          type: array
+          description: Registros da página
+          items:
+            $ref: "#/components/schemas/AssociadoListaResponse"
         page:
           type: integer
           format: int32
