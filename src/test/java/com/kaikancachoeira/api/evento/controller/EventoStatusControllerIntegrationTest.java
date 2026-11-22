@@ -1,12 +1,14 @@
 package com.kaikancachoeira.api.evento.controller;
 
 import com.kaikancachoeira.api.auth.security.TokenService;
+import com.kaikancachoeira.api.clima.service.ClimaSincronizacaoService;
 import com.kaikancachoeira.api.support.DbIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -14,6 +16,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
+import static org.mockito.Mockito.verify;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -23,6 +26,7 @@ class EventoStatusControllerIntegrationTest extends DbIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private TokenService tokenService;
+    @MockitoBean private ClimaSincronizacaoService climaSincronizacaoService;
 
     // ------------------------------------------------------------- helpers
 
@@ -148,6 +152,7 @@ class EventoStatusControllerIntegrationTest extends DbIntegrationTest {
         assertThat(statusDe(id)).isEqualTo("EM_ANDAMENTO");
         assertThat(temIniciadoEm(id)).isTrue();
         assertThat(temEncerradoEm(id)).isFalse();
+        verify(climaSincronizacaoService).sincronizarEvento(id);
     }
 
     @Test
@@ -211,6 +216,7 @@ class EventoStatusControllerIntegrationTest extends DbIntegrationTest {
         OffsetDateTime depois = jdbc.queryForObject(
                 "select iniciado_em from evento where id = ?", OffsetDateTime.class, id);
         assertThat(depois.toInstant()).isEqualTo(iniciado.toInstant());
+        verify(climaSincronizacaoService).sincronizarEvento(id);
     }
 
     @Test

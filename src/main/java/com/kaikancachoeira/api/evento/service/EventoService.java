@@ -13,6 +13,7 @@ import com.kaikancachoeira.api.evento.entity.StatusEvento;
 import com.kaikancachoeira.api.evento.enums.TipoEvento;
 import com.kaikancachoeira.api.evento.exception.TransicaoStatusEventoInvalida;
 import com.kaikancachoeira.api.evento.repository.*;
+import com.kaikancachoeira.api.clima.service.ClimaSincronizacaoService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -48,13 +49,15 @@ public class EventoService {
     private final CustoEventoRepository custoEventoRepository;
     private final Clock clock;
     private final ProdutoEventoRepository produtoEventoRepository;
+    private final ClimaSincronizacaoService climaSincronizacaoService;
 
-    public EventoService(EventoRepository eventoRepository, StatusEventoRepository statusEventoRepository, CustoEventoRepository custoEventoRepository, Clock clock, ProdutoEventoRepository produtoEventoRepository) {
+    public EventoService(EventoRepository eventoRepository, StatusEventoRepository statusEventoRepository, CustoEventoRepository custoEventoRepository, Clock clock, ProdutoEventoRepository produtoEventoRepository, ClimaSincronizacaoService climaSincronizacaoService) {
         this.eventoRepository = eventoRepository;
         this.statusEventoRepository = statusEventoRepository;
         this.custoEventoRepository = custoEventoRepository;
         this.clock = clock;
         this.produtoEventoRepository = produtoEventoRepository;
+        this.climaSincronizacaoService = climaSincronizacaoService;
     }
 
     @Transactional(readOnly = true)
@@ -208,6 +211,10 @@ public class EventoService {
 
         evento.setStatus(novo);
         eventoRepository.saveAndFlush(evento);
+
+        if (EM_ANDAMENTO.equals(destino)) {
+            climaSincronizacaoService.sincronizarEvento(id);
+        }
     }
 
     @Transactional

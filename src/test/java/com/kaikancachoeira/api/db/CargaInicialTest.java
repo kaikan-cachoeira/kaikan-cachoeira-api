@@ -13,7 +13,7 @@ class CargaInicialTest extends DbIntegrationTest {
 
     @Test
     void todasAsMigrationsDevemTerSidoAplicadasComSucesso() {
-        assertThat(count("select count(*) from flyway_schema_history where success")).isEqualTo(29);
+        assertThat(count("select count(*) from flyway_schema_history where success")).isEqualTo(36);
         assertThat(count("select count(*) from flyway_schema_history where not success")).isZero();
     }
 
@@ -24,18 +24,19 @@ class CargaInicialTest extends DbIntegrationTest {
     }
 
     @Test
-    void deveCarregarAsDezPermissoes() {
+    void deveCarregarAsCatorzePermissoes() {
         List<String> nomes = jdbc.queryForList("select nome from permissao", String.class);
         assertThat(nomes).containsExactlyInAnyOrder(
                 "EVENTOS_MENU", "ESTOQUE_MENU", "DOACOES_MENU", "VENDAS_MENU", "CAIXA_MENU",
                 "RELATORIOS_MENU", "DASHBOARD_MENU", "EVENTOS_LEITURA", "PRODUTOS_LEITURA",
-                "CARDAPIO_EVENTO_LEITURA");
+                "CARDAPIO_EVENTO_LEITURA", "ASSOCIADOS_LEITURA", "ASSOCIADOS_MENU",
+                "ANUIDADES_LEITURA", "ANUIDADES_MENU");
     }
 
     @Test
     void administradorDeveTerTodasAsPermissoes() {
         assertThat(count("select count(*) from cargo_permissao where cargo_id = ?",
-                cargoId("ADMINISTRADOR"))).isEqualTo(10);
+                cargoId("ADMINISTRADOR"))).isEqualTo(14);
     }
 
     @Test
