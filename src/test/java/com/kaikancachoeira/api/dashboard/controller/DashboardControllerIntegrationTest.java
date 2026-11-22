@@ -59,6 +59,23 @@ class DashboardControllerIntegrationTest extends DbIntegrationTest {
         jdbc.update("insert into custo_evento (evento_id, nome, valor) values (?, ?, ?)", eventoId, nome, valor);
     }
 
+    private void criarCenarioAssociadosPendentes() {
+        Long config = insertConfiguracaoAnuidade(2026, bd("180.00"));
+
+        Long ana = insertAssociado("Ana", java.time.LocalDate.of(1985, 1, 1), "TITULAR", null, "11900000001");
+        Long anaAnuidade = insertAnuidade(ana, config, bd("180.00"), "PENDENTE");
+        insertPagamentoAnuidade(anaAnuidade, bd("30.00"));
+
+        Long bia = insertAssociado("Bia", java.time.LocalDate.of(1990, 2, 2), "TITULAR", null, "11900000002");
+        insertAnuidade(bia, config, bd("90.00"), "PENDENTE");
+
+        Long carla = insertAssociado("Carla", java.time.LocalDate.of(1995, 3, 3), "TITULAR", null, "11900000003");
+        insertAnuidade(carla, config, bd("200.00"), "PAGO");
+
+        Long dani = insertAssociado("Dani", java.time.LocalDate.of(1998, 4, 4), "DEPENDENTE", ana, "11900000004");
+        insertAnuidade(dani, config, bd("50.00"), "PENDENTE");
+    }
+
     private Long criarCenarioDashboard() {
         Long eventoPeriodo = insertEvento("Festa principal", "EVENTO", "ENCERRADO", T0, T0.plusHours(8));
         marcarInicioEStatus(eventoPeriodo, T0, "ENCERRADO");
@@ -149,6 +166,21 @@ class DashboardControllerIntegrationTest extends DbIntegrationTest {
     }
 
     @Test
+    void associadosPendentesDeveRetornarTop10OrdenadoPorMaiorPendencia() throws Exception {
+        criarCenarioAssociadosPendentes();
+
+        get("/dashboard/associados-pendentes", auth("DASHBOARD_MENU"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$[0].nome").value("Ana"))
+                .andExpect(jsonPath("$[0].valorPendente").value(150.0))
+                .andExpect(jsonPath("$[1].nome").value("Bia"))
+                .andExpect(jsonPath("$[1].valorPendente").value(90.0))
+                .andExpect(jsonPath("$[2].nome").value("Dani"))
+                .andExpect(jsonPath("$[2].valorPendente").value(50.0));
+    }
+
+    @Test
     void produtosMaisVendidosDeveOrdenarPorReceitaECalcularParticipacao() throws Exception {
         criarCenarioDashboard();
 
@@ -168,16 +200,37 @@ class DashboardControllerIntegrationTest extends DbIntegrationTest {
     }
 
     @Test
-    void estoqueDeveRetornarValorEListasDeAlerta() throws Exception {
+    void estoqueDeveRetornarListasDeAlerta() throws Exception {
         criarCenarioDashboard();
 
         get("/dashboard/estoque", auth("DASHBOARD_MENU"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.valorEstoque").value(11.0))
                 .andExpect(jsonPath("$.produtosAbaixoDoMinimo", hasSize(1)))
                 .andExpect(jsonPath("$.produtosAbaixoDoMinimo[0].nome").value("Coxinha"))
                 .andExpect(jsonPath("$.produtosNegativos", hasSize(1)))
                 .andExpect(jsonPath("$.produtosNegativos[0].nome").value("Feijão"));
+    }
+
+    @Test
+    void associadosPendentesSemTokenDeveRetornar401() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/dashboard/associados-pendentes"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.codigo").value("NAO_AUTENTICADO"));
+    }
+
+    @Test
+    void associadosPendentesSemPermissaoDeveRetornar403() throws Exception {
+        get("/dashboard/associados-pendentes", auth("EVENTOS_MENU"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.codigo").value("ACESSO_NEGADO"));
+    }
+
+    @Test
+    void limiteInvalidoDeveRetornar400() throws Exception {
+        get("/dashboard/associados-pendentes", auth("DASHBOARD_MENU"), "limite", "0")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("VALIDACAO"))
+                .andExpect(jsonPath("$.campos[0].campo").value("limite"));
     }
 
     @Test

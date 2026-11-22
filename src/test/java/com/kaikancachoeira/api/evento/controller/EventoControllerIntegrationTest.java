@@ -84,10 +84,6 @@ class EventoControllerIntegrationTest extends DbIntegrationTest {
         return json(nome, "EVENTO", INICIO, FIM);
     }
 
-    private Integer statusId(String codigo) {
-        return jdbc.queryForObject("select id from status_evento where codigo = ?", Integer.class, codigo);
-    }
-
     private static BigDecimal numero(String corpo, String path) {
         Object valor = JsonPath.read(corpo, path);
         return new BigDecimal(valor.toString());
@@ -108,35 +104,54 @@ class EventoControllerIntegrationTest extends DbIntegrationTest {
     }
 
     @Test
-    void listarSemNenhumFiltroDeveRetornarTodos() throws Exception {
+    void listarSemNenhumFiltroDeveRetornarTodosComEnvelopeDaPagina() throws Exception {
         insertEvento("A", "EVENTO", "NAO_INICIADO");
         insertEvento("B", "REUNIAO", "ENCERRADO", T0.plusDays(1), T0.plusDays(1).plusHours(2));
 
         listar(leitura())
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.itens", hasSize(2)));
+                .andExpect(jsonPath("$.itens", hasSize(2)))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalItens").value(2))
+                .andExpect(jsonPath("$.totalPaginas").value(1));
     }
 
     @Test
     void listarSemEventosDeveRetornarListaVazia() throws Exception {
         listar(leitura())
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.itens", hasSize(0)));
+                .andExpect(jsonPath("$.itens", hasSize(0)))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalItens").value(0))
+                .andExpect(jsonPath("$.totalPaginas").value(0));
     }
 
     @Test
-    void listarDeveColocarEmAndamentoPrimeiroEDepoisDoMaisRecenteParaOMaisAntigo() throws Exception {
+    void listarDevePriorizarEmAndamentoERespeitarPaginacaoNoBanco() throws Exception {
         insertEvento("Antigo", "EVENTO", "ENCERRADO", T0, T0.plusHours(8));
         insertEvento("Futuro", "EVENTO", "NAO_INICIADO", T0.plusDays(10), T0.plusDays(10).plusHours(8));
         insertEvento("Atual", "EVENTO", "EM_ANDAMENTO", T0.minusDays(5), T0.minusDays(5).plusHours(8));
         insertEvento("Meio", "EVENTO", "ENCERRADO", T0.plusDays(3), T0.plusDays(3).plusHours(8));
 
-        listar(leitura())
+        listar(leitura(), "page", "0", "size", "2")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.itens[0].nome").value("Atual"))
                 .andExpect(jsonPath("$.itens[1].nome").value("Futuro"))
-                .andExpect(jsonPath("$.itens[2].nome").value("Meio"))
-                .andExpect(jsonPath("$.itens[3].nome").value("Antigo"));
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.totalItens").value(4))
+                .andExpect(jsonPath("$.totalPaginas").value(2));
+
+        listar(leitura(), "page", "1", "size", "2")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.itens[0].nome").value("Meio"))
+                .andExpect(jsonPath("$.itens[1].nome").value("Antigo"))
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.totalItens").value(4))
+                .andExpect(jsonPath("$.totalPaginas").value(2));
     }
 
     @Test
@@ -175,31 +190,84 @@ class EventoControllerIntegrationTest extends DbIntegrationTest {
     }
 
     @Test
-    void filtroPorStatus() throws Exception {
+    void listarDeveFiltrarPorMultiplosStatus() throws Exception {
         insertEvento("Novo", "EVENTO", "NAO_INICIADO");
         insertEvento("Velho", "EVENTO", "ENCERRADO", T0.plusDays(1), T0.plusDays(1).plusHours(1));
+        insertEvento("Andando", "EVENTO", "EM_ANDAMENTO", T0.plusDays(2), T0.plusDays(2).plusHours(1));
 
-        listar(leitura(), "statusId", statusId("ENCERRADO").toString())
-                .andExpect(jsonPath("$.itens", hasSize(1)))
-                .andExpect(jsonPath("$.itens[0].nome").value("Velho"));
+        listar(leitura(), "status", "ENCERRADO,EM_ANDAMENTO")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.itens", hasSize(2)))
+                .andExpect(jsonPath("$.totalItens").value(2))
+                .andExpect(jsonPath("$.itens[*].nome", hasItem("Velho")))
+                .andExpect(jsonPath("$.itens[*].nome", hasItem("Andando")))
+                .andExpect(jsonPath("$.itens[*].nome", not(hasItem("Novo"))));
     }
 
     @Test
-    void filtroPorTipo() throws Exception {
+    void listarDeveIgnorarEspacosExternosNosFiltrosCSV() throws Exception {
+        insertEvento("Novo", "EVENTO", "NAO_INICIADO");
+        insertEvento("Velho", "EVENTO", "ENCERRADO", T0.plusDays(1), T0.plusDays(1).plusHours(1));
+        insertEvento("Andando", "EVENTO", "EM_ANDAMENTO", T0.plusDays(2), T0.plusDays(2).plusHours(1));
+
+        listar(leitura(), "status", " EM_ANDAMENTO , ENCERRADO ", "tipos", " EVENTO ")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.itens", hasSize(2)))
+                .andExpect(jsonPath("$.totalItens").value(2));
+    }
+
+    @Test
+    void listarDeveFiltrarPorTiposECombinarComStatus() throws Exception {
         insertEvento("Evento", "EVENTO", "NAO_INICIADO");
         insertEvento("Reuniao", "REUNIAO", "NAO_INICIADO", T0.plusDays(1), T0.plusDays(1).plusHours(1));
+        insertEvento("Outro", "EVENTO", "ENCERRADO", T0.plusDays(2), T0.plusDays(2).plusHours(1));
 
-        listar(leitura(), "tipoEvento", "REUNIAO")
-                .andExpect(jsonPath("$.itens", hasSize(1)))
-                .andExpect(jsonPath("$.itens[0].nome").value("Reuniao"));
+        listar(leitura(), "status", "NAO_INICIADO", "tipos", "EVENTO,REUNIAO")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.itens", hasSize(2)))
+                .andExpect(jsonPath("$.totalItens").value(2))
+                .andExpect(jsonPath("$.itens[*].nome", hasItem("Evento")))
+                .andExpect(jsonPath("$.itens[*].nome", hasItem("Reuniao")))
+                .andExpect(jsonPath("$.itens[*].nome", not(hasItem("Outro"))));
     }
 
     @Test
-    void tipoDesconhecidoDeveRetornar400() throws Exception {
-        listar(leitura(), "tipoEvento", "FESTA")
+    void listarDeveValidarPaginacao() throws Exception {
+        listar(leitura(), "page", "-1")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("VALIDACAO"))
+                .andExpect(jsonPath("$.campos[*].campo", hasItem("page")));
+
+        listar(leitura(), "size", "0")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("VALIDACAO"))
+                .andExpect(jsonPath("$.campos[*].campo", hasItem("size")));
+
+        listar(leitura(), "size", "101")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("VALIDACAO"))
+                .andExpect(jsonPath("$.campos[*].campo", hasItem("size")));
+
+        listar(leitura(), "size", "100")
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void statusDesconhecidoDeveRetornar400ComCampoStatus() throws Exception {
+        listar(leitura(), "status", "EM_ANDAMENTO,FESTA")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("REQUISICAO_INVALIDA"))
-                .andExpect(jsonPath("$.campos[0].campo").value("tipoEvento"));
+                .andExpect(jsonPath("$.mensagem").value("Valor inválido para o parâmetro"))
+                .andExpect(jsonPath("$.campos[*].campo", hasItem("status")));
+    }
+
+    @Test
+    void tiposDesconhecidosDeveRetornar400ComCampoTipos() throws Exception {
+        listar(leitura(), "tipos", "EVENTO,FESTA")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("REQUISICAO_INVALIDA"))
+                .andExpect(jsonPath("$.mensagem").value("Valor inválido para o parâmetro"))
+                .andExpect(jsonPath("$.campos[*].campo", hasItem("tipos")));
     }
 
     @Test
@@ -227,7 +295,7 @@ class EventoControllerIntegrationTest extends DbIntegrationTest {
         insertEvento("Bingo B", "REUNIAO", "NAO_INICIADO", T0.plusDays(1), T0.plusDays(1).plusHours(1));
         insertEvento("Outro", "EVENTO", "NAO_INICIADO", T0.plusDays(2), T0.plusDays(2).plusHours(1));
 
-        listar(leitura(), "q", "bingo", "tipoEvento", "EVENTO", "statusId", statusId("NAO_INICIADO").toString())
+        listar(leitura(), "q", "bingo", "tipos", "EVENTO", "status", "NAO_INICIADO")
                 .andExpect(jsonPath("$.itens", hasSize(1)))
                 .andExpect(jsonPath("$.itens[0].nome").value("Bingo A"));
     }

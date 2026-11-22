@@ -6,7 +6,6 @@ import com.kaikancachoeira.api.evento.dto.EventoDetalheResponse;
 import com.kaikancachoeira.api.evento.dto.EventoRequest;
 import com.kaikancachoeira.api.evento.dto.EventoResponse;
 import com.kaikancachoeira.api.common.dto.PaginaResponse;
-import com.kaikancachoeira.api.evento.enums.TipoEvento;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -48,7 +47,7 @@ public interface EventoApi {
                             mediaType = "application/json",
                             schema = @Schema(implementation = ErroResponse.class),
                             examples = @ExampleObject(name = "Parâmetro inválido", value = """
-                    {"codigo": "REQUISICAO_INVALIDA","mensagem": "Valor inválido para o parâmetro","campos": [{"campo": "tipoEvento","mensagem": "Valor inválido"}]}
+                    {"codigo": "REQUISICAO_INVALIDA","mensagem": "Valor inválido para o parâmetro","campos": [{"campo": "tipos","mensagem": "Valor inválido"}]}
                     """)
                     )
             )
@@ -56,9 +55,9 @@ public interface EventoApi {
     ResponseEntity<PaginaResponse<EventoResponse>> listar(
             @Parameter(description = "Texto para pesquisa de eventos") String q,
 
-            @Parameter(description = "ID do status para filtrar os eventos") Integer statusId,
+            @Parameter(description = "Códigos de status em CSV. Valores aceitos: NAO_INICIADO, EM_ANDAMENTO, ENCERRADO") String status,
 
-            @Parameter(description = "Tipo de evento para filtrar os resultados") TipoEvento tipoEvento,
+            @Parameter(description = "Tipos de evento em CSV. Valores aceitos: EVENTO, REUNIAO") String tipos,
             @Parameter(
                     description = "Data e hora inicial do período de consulta, em formato ISO 8601",
                     example = "2026-10-01T00:00:00Z"

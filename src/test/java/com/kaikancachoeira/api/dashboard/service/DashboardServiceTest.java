@@ -1,5 +1,6 @@
 package com.kaikancachoeira.api.dashboard.service;
 
+import com.kaikancachoeira.api.dashboard.dto.DashboardAssociadoPendenteResponse;
 import com.kaikancachoeira.api.dashboard.repository.DashboardRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,6 +12,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -47,6 +49,35 @@ class DashboardServiceTest {
 
         assertThrows(com.kaikancachoeira.api.common.exception.ValidacaoException.class,
                 () -> service.listarProdutosMaisVendidos(null, null, 0));
+
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void deveAplicarLimitePadraoEUsarAnoAtualNosAssociadosPendentes() {
+        Clock clock = Clock.fixed(Instant.parse("2026-11-09T10:00:00Z"), ZoneOffset.UTC);
+        DashboardService service = new DashboardService(repository, clock);
+
+        when(repository.listarAssociadosPendentes(anyInt(), anyInt()))
+                .thenReturn(List.of(new DashboardAssociadoPendenteResponse(1L, "Ana", BigDecimal.TEN)));
+
+        service.listarAssociadosPendentes(null);
+
+        ArgumentCaptor<Integer> ano = ArgumentCaptor.forClass(Integer.class);
+        ArgumentCaptor<Integer> limite = ArgumentCaptor.forClass(Integer.class);
+        verify(repository).listarAssociadosPendentes(ano.capture(), limite.capture());
+
+        assertEquals(2026, ano.getValue());
+        assertEquals(10, limite.getValue());
+    }
+
+    @Test
+    void deveRejeitarLimiteInvalidoParaAssociadosPendentes() {
+        Clock clock = Clock.fixed(Instant.parse("2026-11-09T10:00:00Z"), ZoneOffset.UTC);
+        DashboardService service = new DashboardService(repository, clock);
+
+        assertThrows(com.kaikancachoeira.api.common.exception.ValidacaoException.class,
+                () -> service.listarAssociadosPendentes(0));
 
         verifyNoInteractions(repository);
     }

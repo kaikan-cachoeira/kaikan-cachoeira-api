@@ -1,5 +1,6 @@
 package com.kaikancachoeira.api.dashboard.repository;
 
+import com.kaikancachoeira.api.dashboard.dto.DashboardAssociadoPendenteResponse;
 import com.kaikancachoeira.api.dashboard.dto.DashboardEstoqueResponse;
 import com.kaikancachoeira.api.dashboard.dto.DashboardEventoResponse;
 import com.kaikancachoeira.api.dashboard.dto.DashboardProdutoMaisVendidoResponse;
@@ -19,6 +20,8 @@ public interface DashboardRepository {
             Instant dataFim,
             int limite
     );
+
+    List<DashboardAssociadoPendenteResponse> listarAssociadosPendentes(int ano, int limite);
 
     DashboardEstoqueResponse consultarEstoque();
 }

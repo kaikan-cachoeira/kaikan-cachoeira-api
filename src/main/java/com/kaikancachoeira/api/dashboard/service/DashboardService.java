@@ -1,6 +1,7 @@
 package com.kaikancachoeira.api.dashboard.service;
 
 import com.kaikancachoeira.api.common.exception.ValidacaoException;
+import com.kaikancachoeira.api.dashboard.dto.DashboardAssociadoPendenteResponse;
 import com.kaikancachoeira.api.dashboard.dto.DashboardEstoqueResponse;
 import com.kaikancachoeira.api.dashboard.dto.DashboardEventoResponse;
 import com.kaikancachoeira.api.dashboard.dto.DashboardProdutoMaisVendidoResponse;
@@ -11,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.Year;
 import java.time.ZoneOffset;
 import java.util.List;
 
@@ -53,6 +55,18 @@ public class DashboardService {
         }
 
         return repository.listarProdutosMaisVendidos(periodo.inicio(), periodo.fim(), limiteNormalizado);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DashboardAssociadoPendenteResponse> listarAssociadosPendentes(Integer limite) {
+        int limiteNormalizado = limite == null ? LIMITE_PADRAO : limite;
+
+        if (limiteNormalizado < 1) {
+            throw ValidacaoException.campo("limite", "O limite deve ser maior que zero");
+        }
+
+        int ano = Year.now(clock).getValue();
+        return repository.listarAssociadosPendentes(ano, limiteNormalizado);
     }
 
     @Transactional(readOnly = true)

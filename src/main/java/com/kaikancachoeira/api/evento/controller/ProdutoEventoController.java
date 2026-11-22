@@ -4,6 +4,7 @@ import com.kaikancachoeira.api.common.dto.PaginaResponse;
 import com.kaikancachoeira.api.evento.dto.FotoEventoResponse;
 import com.kaikancachoeira.api.evento.dto.ProdutoEventoRequest;
 import com.kaikancachoeira.api.evento.dto.ProdutoEventoResponse;
+import com.kaikancachoeira.api.evento.enums.OrigemProdutoEvento;
 import com.kaikancachoeira.api.evento.service.ProdutoEventoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -31,10 +32,11 @@ public class ProdutoEventoController implements ProdutoEventoApi {
             @PathVariable Long eventoId,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) List<String> categoria,
+            @RequestParam(required = false) OrigemProdutoEvento origem,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        PaginaResponse<ProdutoEventoResponse> response = service.listar(eventoId, q, categoria, page, size);
+        PaginaResponse<ProdutoEventoResponse> response = service.listar(eventoId, q, categoria, origem, page, size);
 
         return ResponseEntity
                 .status(HttpStatus.OK)

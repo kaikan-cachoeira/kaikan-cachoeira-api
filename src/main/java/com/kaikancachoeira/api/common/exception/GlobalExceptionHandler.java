@@ -34,7 +34,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErroResponse> handleApiException(ApiException ex) {
         return ResponseEntity
                 .status(ex.getStatus())
-                .body(ErroResponse.de(ex.getCodigo(), ex.getMessage()));
+                .body(new ErroResponse(ex.getCodigo(), ex.getMessage(), ex.getCampos()));
     }
 
     @ExceptionHandler(ValidacaoException.class)

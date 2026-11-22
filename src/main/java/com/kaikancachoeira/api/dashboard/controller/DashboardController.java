@@ -1,5 +1,6 @@
 package com.kaikancachoeira.api.dashboard.controller;
 
+import com.kaikancachoeira.api.dashboard.dto.DashboardAssociadoPendenteResponse;
 import com.kaikancachoeira.api.dashboard.dto.DashboardEstoqueResponse;
 import com.kaikancachoeira.api.dashboard.dto.DashboardEventoResponse;
 import com.kaikancachoeira.api.dashboard.dto.DashboardProdutoMaisVendidoResponse;
@@ -52,6 +53,14 @@ public class DashboardController implements DashboardApi {
             @RequestParam(required = false) Integer limite
     ) {
         return ResponseEntity.ok(service.listarProdutosMaisVendidos(dataInicio, dataFim, limite));
+    }
+
+    @Override
+    @GetMapping("/associados-pendentes")
+    public ResponseEntity<List<DashboardAssociadoPendenteResponse>> listarAssociadosPendentes(
+            @RequestParam(required = false) Integer limite
+    ) {
+        return ResponseEntity.ok(service.listarAssociadosPendentes(limite));
     }
 
     @Override

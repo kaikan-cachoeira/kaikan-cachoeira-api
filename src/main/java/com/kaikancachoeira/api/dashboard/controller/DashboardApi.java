@@ -1,6 +1,7 @@
 package com.kaikancachoeira.api.dashboard.controller;
 
 import com.kaikancachoeira.api.common.exception.ErroResponse;
+import com.kaikancachoeira.api.dashboard.dto.DashboardAssociadoPendenteResponse;
 import com.kaikancachoeira.api.dashboard.dto.DashboardEstoqueResponse;
 import com.kaikancachoeira.api.dashboard.dto.DashboardEventoResponse;
 import com.kaikancachoeira.api.dashboard.dto.DashboardProdutoMaisVendidoResponse;
@@ -95,8 +96,30 @@ public interface DashboardApi {
     );
 
     @Operation(
+            summary = "Lista associados com pendência",
+            description = "Retorna os associados com anuidade pendente no ano corrente, ordenados pela maior pendência."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Associados retornados"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Parâmetros inválidos",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErroResponse.class),
+                            examples = @ExampleObject(name = "Limite inválido", value = """
+                            {"codigo":"VALIDACAO","mensagem":"Dados inválidos","campos":[{"campo":"limite","mensagem":"O limite deve ser maior que zero"}]}
+                            """)
+                    )
+            )
+    })
+    ResponseEntity<List<DashboardAssociadoPendenteResponse>> listarAssociadosPendentes(
+            @Parameter(description = "Quantidade máxima de itens retornados", example = "10") Integer limite
+    );
+
+    @Operation(
             summary = "Consulta o estoque atual",
-            description = "Retorna o valor total do estoque e os alertas de produtos abaixo do mínimo ou negativos."
+            description = "Retorna os alertas de produtos abaixo do mínimo ou negativos."
     )
     @ApiResponse(responseCode = "200", description = "Estoque retornado")
     ResponseEntity<DashboardEstoqueResponse> consultarEstoque();

@@ -1,5 +1,6 @@
 package com.kaikancachoeira.api.dashboard.repository;
 
+import com.kaikancachoeira.api.dashboard.dto.DashboardAssociadoPendenteResponse;
 import com.kaikancachoeira.api.dashboard.dto.DashboardEstoqueResponse;
 import com.kaikancachoeira.api.dashboard.dto.DashboardEventoResponse;
 import com.kaikancachoeira.api.dashboard.dto.DashboardProdutoAlertaResponse;
@@ -155,10 +156,30 @@ public class DashboardRepositoryImpl implements DashboardRepository {
             limit :limite
             """;
 
-    private static final String SQL_VALOR_ESTOQUE = """
-            select coalesce(sum(e.quantidade_atual * e.custo_unitario), 0)
-            from estoque e
-            where e.custo_unitario > 0
+    private static final String SQL_ASSOCIADOS_PENDENTES = """
+            with anuidades_ano as (
+                select
+                    an.id,
+                    an.associado_id,
+                    an.valor,
+                    coalesce(sum(pg.valor), 0) as pago
+                from anuidade an
+                join configuracao_anuidade ca on ca.id = an.configuracao_anuidade_id
+                left join pagamento pg on pg.anuidade_id = an.id
+                where ca.ano = :ano
+                  and an.status = 'PENDENTE'
+                group by an.id, an.associado_id, an.valor
+            )
+            select
+                assoc.id as associado_id,
+                assoc.nome,
+                sum(greatest(aa.valor - aa.pago, 0)) as valor_pendente
+            from anuidades_ano aa
+            join associado assoc on assoc.id = aa.associado_id
+            group by assoc.id, assoc.nome
+            having sum(greatest(aa.valor - aa.pago, 0)) > 0
+            order by valor_pendente desc, assoc.nome asc, assoc.id asc
+            limit :limite
             """;
 
     private static final String SQL_ABAIXO_MINIMO = """
@@ -250,9 +271,24 @@ public class DashboardRepositoryImpl implements DashboardRepository {
     }
 
     @Override
-    public DashboardEstoqueResponse consultarEstoque() {
-        BigDecimal valorEstoque = dinheiro(consulta(SQL_VALOR_ESTOQUE).getSingleResult());
+    public List<DashboardAssociadoPendenteResponse> listarAssociadosPendentes(int ano, int limite) {
+        @SuppressWarnings("unchecked")
+        List<Object[]> linhas = (List<Object[]>) em.createNativeQuery(SQL_ASSOCIADOS_PENDENTES)
+                .setParameter("ano", ano)
+                .setParameter("limite", limite)
+                .getResultList();
 
+        return linhas.stream()
+                .map(l -> new DashboardAssociadoPendenteResponse(
+                        numero(l[0]).longValue(),
+                        (String) l[1],
+                        dinheiro(l[2])
+                ))
+                .toList();
+    }
+
+    @Override
+    public DashboardEstoqueResponse consultarEstoque() {
         List<DashboardProdutoAlertaResponse> abaixoDoMinimo = linhas(SQL_ABAIXO_MINIMO).stream()
                 .map(this::mapearAlertaEstoque)
                 .toList();
@@ -261,7 +297,7 @@ public class DashboardRepositoryImpl implements DashboardRepository {
                 .map(this::mapearAlertaEstoque)
                 .toList();
 
-        return new DashboardEstoqueResponse(valorEstoque, abaixoDoMinimo, negativos);
+        return new DashboardEstoqueResponse(abaixoDoMinimo, negativos);
     }
 
     private DashboardProdutoAlertaResponse mapearAlertaEstoque(Object[] linha) {
