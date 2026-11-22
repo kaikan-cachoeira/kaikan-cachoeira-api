@@ -24,7 +24,7 @@ class CargaInicialTest extends DbIntegrationTest {
     }
 
     @Test
-    void deveCarregarAsCatorzePermissoes() {
+    void deveCarregarAsQuatorzePermissoes() {
         List<String> nomes = jdbc.queryForList("select nome from permissao", String.class);
         assertThat(nomes).containsExactlyInAnyOrder(
                 "EVENTOS_MENU", "ESTOQUE_MENU", "DOACOES_MENU", "VENDAS_MENU", "CAIXA_MENU",
