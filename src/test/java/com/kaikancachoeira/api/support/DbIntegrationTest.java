@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -94,6 +95,35 @@ public abstract class DbIntegrationTest extends IntegrationTestBase {
             values (?, ?, cast(? as bigint), cast(? as varchar), cast(? as integer), cast(? as numeric),
                     cast(? as varchar), ?, cast(? as numeric)) returning id""",
                 Long.class, eventoId, tipo, produtoId, nome, quantidade, valor, forma, doador, valorFicha);
+    }
+
+    protected Long insertAssociado(String nome, LocalDate dataNascimento, String tipo, Long titularId, String numeroContato) {
+        return jdbc.queryForObject("""
+            insert into associado (nome, data_nascimento, tipo, titular_id, numero_contato)
+            values (?, ?, ?, cast(? as bigint), ?) returning id""",
+                Long.class, nome, dataNascimento, tipo, titularId, numeroContato);
+    }
+
+    protected Long insertConfiguracaoAnuidade(Integer ano, BigDecimal valor) {
+        return jdbc.queryForObject("""
+            insert into configuracao_anuidade (ano, valor)
+            values (?, ?) returning id""", Long.class, ano, valor);
+    }
+
+    protected Long insertAnuidade(Long associadoId, Long configuracaoAnuidadeId, BigDecimal valor, String status) {
+        return jdbc.queryForObject("""
+            insert into anuidade (associado_id, configuracao_anuidade_id, valor, status)
+            values (?, ?, ?, ?) returning id""", Long.class, associadoId, configuracaoAnuidadeId, valor, status);
+    }
+
+    protected Long insertPagamentoAnuidade(Long anuidadeId, BigDecimal valor) {
+        return jdbc.queryForObject("""
+            insert into pagamento (anuidade_id, valor)
+            values (?, ?) returning id""", Long.class, anuidadeId, valor);
+    }
+
+    protected Long associadoIdPorNome(String nome) {
+        return jdbc.queryForObject("select id from associado where nome = ?", Long.class, nome);
     }
 
     protected Long insertPagamento(Long eventoId, String tipo, BigDecimal valor, String forma, Long fiadoId) {

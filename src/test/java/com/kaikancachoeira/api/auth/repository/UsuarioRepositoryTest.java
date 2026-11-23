@@ -18,7 +18,7 @@ class UsuarioRepositoryTest extends DbIntegrationTest {
 
         assertThat(admin.getStatus()).isEqualTo(Status.PENDENTE);
         assertThat(admin.getCargo().getNome()).isEqualTo("ADMINISTRADOR");
-        assertThat(admin.getCargo().getPermissoes()).hasSize(10);
+        assertThat(admin.getCargo().getPermissoes()).hasSize(14);
     }
 
     @Test
