@@ -27,8 +27,8 @@ public class PagamentoService {
 
     @Transactional
     public PagamentoResponse registrar(Long idAssociado, PagamentoRequest request) {
-        Anuidade anuidade = anuidadeRepository.findByIdAndAssociadoId(request.anuidadeId(), idAssociado)
-                .orElseThrow(() -> RecursoNaoEncontradoException.de("Anuidade", request.anuidadeId()));
+        Anuidade anuidade = anuidadeRepository.findByAssociadoIdAndConfiguracaoAnuidadeId(idAssociado, request.confAnuidadeId())
+                .orElseThrow(() -> RecursoNaoEncontradoException.de("Anuidade", request.confAnuidadeId()));
 
         if (anuidade.getStatus() == StatusAnuidade.ISENTO) {
             throw new ConflitoException("ANUIDADE_ISENTA", "Não é possível registrar pagamento em anuidade isenta.");

@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 public record PagamentoRequest(
         @Schema(example = "10")
         @NotNull
-        Long anuidadeId,
+        Integer confAnuidadeId,
 
         @Schema(example = "180.00")
         @NotNull @Positive

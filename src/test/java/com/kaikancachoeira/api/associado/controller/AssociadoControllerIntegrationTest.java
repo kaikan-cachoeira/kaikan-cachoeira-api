@@ -77,7 +77,7 @@ class AssociadoControllerIntegrationTest extends ControllerIntegrationTest {
 
         enviar(post("/associados/{id}/pagamentos", associado), semPermissao(), """
                 {
-                  "anuidadeId": %d,
+                  "confAnuidadeId": %d,
                   "valor": 180.00
                 }
                 """.formatted(anuidade))
@@ -202,10 +202,10 @@ class AssociadoControllerIntegrationTest extends ControllerIntegrationTest {
 
         enviar(post("/associados/{id}/pagamentos", associado), permissaoCompleta(), """
                 {
-                  "anuidadeId": %d,
+                  "confAnuidadeId": %d,
                   "valor": 180.00
                 }
-                """.formatted(anuidade))
+                """.formatted(config))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.anuidadeId").value(anuidade.intValue()))
