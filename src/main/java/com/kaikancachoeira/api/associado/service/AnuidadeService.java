@@ -11,6 +11,7 @@ import com.kaikancachoeira.api.associado.enums.TipoAssociado;
 import com.kaikancachoeira.api.associado.repository.AnuidadeRepository;
 import com.kaikancachoeira.api.associado.repository.AssociadoRepository;
 import com.kaikancachoeira.api.associado.repository.ConfiguracaoAnuidadeRepository;
+import com.kaikancachoeira.api.associado.repository.PagamentoRepository;
 import com.kaikancachoeira.api.common.exception.ConflitoException;
 import com.kaikancachoeira.api.common.exception.RecursoNaoEncontradoException;
 import org.springframework.stereotype.Service;
@@ -24,13 +25,16 @@ public class AnuidadeService {
     private final AnuidadeRepository anuidadeRepository;
     private final AssociadoRepository associadoRepository;
     private final ConfiguracaoAnuidadeRepository configuracaoRepository;
+    private final PagamentoRepository pagamentoRepository;
 
     public AnuidadeService(AnuidadeRepository anuidadeRepository,
                            AssociadoRepository associadoRepository,
-                           ConfiguracaoAnuidadeRepository configuracaoRepository) {
+                           ConfiguracaoAnuidadeRepository configuracaoRepository,
+                           PagamentoRepository pagamentoRepository) {
         this.anuidadeRepository = anuidadeRepository;
         this.associadoRepository = associadoRepository;
         this.configuracaoRepository = configuracaoRepository;
+        this.pagamentoRepository = pagamentoRepository;
     }
 
     @Transactional
@@ -58,6 +62,33 @@ public class AnuidadeService {
         return AnuidadeResponse.de(anuidade);
     }
 
+    @Transactional
+    public AnuidadeResponse isentar(Long id) {
+        Anuidade anuidade = buscarAnuidade(id);
+
+        if (anuidade.getStatus() == StatusAnuidade.ISENTO) {
+            throw new ConflitoException("ANUIDADE_JA_ISENTA", "A anuidade já está isenta.");
+        }
+
+        anuidade.setStatus(StatusAnuidade.ISENTO);
+        anuidadeRepository.save(anuidade);
+        anuidadeRepository.flush();
+        return AnuidadeResponse.de(anuidade);
+    }
+
+    @Transactional
+    public void revogarIsencao(Long id) {
+        Anuidade anuidade = buscarAnuidade(id);
+
+        if (anuidade.getStatus() != StatusAnuidade.ISENTO) {
+            throw new ConflitoException("ANUIDADE_NAO_ISENTA", "A anuidade não está isenta.");
+        }
+
+        anuidade.setStatus(statusComPagamentos(anuidade));
+        anuidadeRepository.save(anuidade);
+        anuidadeRepository.flush();
+    }
+
     @Transactional(readOnly = true)
     public Anuidade buscarAnuidade(Long id) {
         return anuidadeRepository.findById(id)
@@ -75,6 +106,14 @@ public class AnuidadeService {
         anuidade.setValor(valor);
         anuidade.setStatus(StatusAnuidade.PENDENTE);
         anuidadeRepository.save(anuidade);
+    }
+
+    private StatusAnuidade statusComPagamentos(Anuidade anuidade) {
+        BigDecimal totalPago = pagamentoRepository.findAllByAnuidadeIdOrderByCriadoEmDesc(anuidade.getId()).stream()
+                .map(pagamento -> pagamento.getValor())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return totalPago.compareTo(anuidade.getValor()) >= 0 ? StatusAnuidade.PAGO : StatusAnuidade.PENDENTE;
     }
 
     private ConfiguracaoAnuidade buscarConfiguracao(Integer id) {
