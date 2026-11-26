@@ -16,11 +16,10 @@ public interface TrocaSenhaApi {
 
     @Operation(
             summary = "Troca a senha do usuário",
-            description = "Troca a senha sem exigir token. Requer usuário autenticado, "
-                    + "e o idUsuario do corpo precisa ser o do usuário logado.")
+            description = "Troca a senha. Requer usuário autenticado")
     @ApiResponses({
             @ApiResponse(responseCode = "202", description = "Senha alterada"),
-            @ApiResponse(responseCode = "400", description = "idUsuario nulo ou senha nula, em branco ou fora do tamanho"),
+            @ApiResponse(responseCode = "400", description = "novaSenha nula, em branco ou fora do tamanho"),
             @ApiResponse(responseCode = "403", description = "idUsuario diferente do usuário autenticado")
     })
     ResponseEntity<Void> trocarSenha(@Parameter(hidden = true) Authentication authentication,
