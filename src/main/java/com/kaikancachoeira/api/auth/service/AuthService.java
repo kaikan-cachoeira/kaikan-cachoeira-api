@@ -264,4 +264,7 @@ public class AuthService {
             """.formatted(linkRecuperacao);
     }
 
+    private String trocarEmail(String email){
+        return null;
+    }
 }

@@ -14,18 +14,27 @@ import org.springframework.security.oauth2.server.resource.web.BearerTokenResolv
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private static final String ROTAS_AUTH = "/auth/**";
+    private static final String[] ROTAS_PUBLICAS_AUTH = {
+            "/auth/login",
+            "/auth/refresh",
+            "/auth/logout",
+            "/auth/recuperacao-novaSenha",
+            "/auth/redefinicao-novaSenha",
+            "/auth/redefinicao-email"
+    };
 
     @Bean
     public SecurityFilterChain securityFilterChain(
@@ -41,7 +50,9 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(ROTAS_AUTH).permitAll()
+                        .requestMatchers(
+                                ROTAS_PUBLICAS_AUTH
+                        ).permitAll()
                         .requestMatchers(
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
@@ -80,11 +91,19 @@ public class SecurityConfig {
     @Bean
     public BearerTokenResolver bearerTokenResolver() {
         DefaultBearerTokenResolver defaultResolver = new DefaultBearerTokenResolver();
-        RequestMatcher rotasAuth = PathPatternRequestMatcher.withDefaults().matcher(ROTAS_AUTH);
+        RequestMatcher rotasPublicas = rotasPublicasAuth();
 
-        return request -> rotasAuth.matches(request)
+        return request -> rotasPublicas.matches(request)
                 ? null
                 : defaultResolver.resolve(request);
+    }
+
+    private RequestMatcher rotasPublicasAuth() {
+        return new OrRequestMatcher(
+                Arrays.stream(ROTAS_PUBLICAS_AUTH)
+                        .map(PathPatternRequestMatcher::pathPattern)
+                        .toArray(RequestMatcher[]::new)
+        );
     }
 
     @Bean
