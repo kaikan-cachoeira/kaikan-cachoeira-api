@@ -2342,6 +2342,63 @@ paths:
                     codigo: CATEGORIA_DUPLICADA
                     mensagem: Já existe uma categoria com este nome.
                     campos: []
+  /auth/me:
+    get:
+      tags:
+      - Autenticação
+      summary: Consulta o perfil do usuário autenticado
+      operationId: consultarPerfil
+      responses:
+        "200":
+          description: Perfil do usuário
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PerfilResponse"
+        "401":
+          description: Autenticação necessária
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+        "404":
+          description: Usuário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+    patch:
+      tags:
+      - Autenticação
+      summary: Atualiza o nome do usuário autenticado
+      operationId: atualizarNome
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AtualizarNomeRequest"
+        required: true
+      responses:
+        "202":
+          description: Nome atualizado
+        "400":
+          description: "Nome nulo, em branco ou com mais de 150 caracteres"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+        "401":
+          description: Autenticação necessária
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
+        "404":
+          description: Usuário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroResponse"
   /auth/refresh:
     post:
       tags:
@@ -4385,6 +4442,28 @@ components:
       required:
       - email
       - senha
+    AtualizarNomeRequest:
+      type: object
+      properties:
+        nome:
+          type: string
+          maxLength: 150
+          minLength: 1
+      required:
+      - nome
+    PerfilResponse:
+      type: object
+      properties:
+        nome:
+          type: string
+        email:
+          type: string
+        cargo:
+          type: string
+        permissoes:
+          type: array
+          items:
+            type: string
     LoginResponse:
       type: object
       properties:
