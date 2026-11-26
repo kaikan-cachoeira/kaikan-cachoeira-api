@@ -118,11 +118,33 @@ class AssociadoControllerIntegrationTest extends ControllerIntegrationTest {
                 .andExpect(jsonPath("$.itens[0].nome").value("Pedro"))
                 .andExpect(jsonPath("$.itens[0].tipo").value("DEPENDENTE"))
                 .andExpect(jsonPath("$.itens[0].titularId").value(titular.intValue()))
+                .andExpect(jsonPath("$.itens[0].titularNome").value("Maria"))
+                .andExpect(jsonPath("$.itens[0].anuidade").value(nullValue()))
                 .andExpect(jsonPath("$.itens[0].status").value("PENDENTE"))
                 .andExpect(jsonPath("$.page").value(0))
                 .andExpect(jsonPath("$.size").isNumber())
                 .andExpect(jsonPath("$.totalItens").value(1))
                 .andExpect(jsonPath("$.totalPaginas").value(1));
+    }
+
+    @Test
+    void listarDeveRetornarTitularNomeEAnuidadeDosTitulares() throws Exception {
+        Long config = insertConfiguracaoAnuidade(2026, bd("180.00"));
+        Long titular = insertAssociado("Maria", LocalDate.of(1980, 2, 10), "TITULAR", null, "11999990000");
+        insertAnuidade(titular, config, bd("180.00"), "PENDENTE");
+
+        enviar(get("/associados")
+                        .param("ano", "2026")
+                        .param("tipo", "TITULAR")
+                        .param("size", "100"),
+                permissaoCompleta(), null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.itens[0].nome").value("Maria"))
+                .andExpect(jsonPath("$.itens[0].titularNome").value(nullValue()))
+                .andExpect(jsonPath("$.itens[0].anuidade.id").isNumber())
+                .andExpect(jsonPath("$.itens[0].anuidade.valor").value(180.00))
+                .andExpect(jsonPath("$.itens[0].anuidade.totalPago").value(0.00))
+                .andExpect(jsonPath("$.itens[0].anuidade.status").value("PENDENTE"));
     }
 
     @Test

@@ -5,8 +5,10 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class AnuidadeControllerIntegrationTest extends ControllerIntegrationTest {
@@ -57,6 +59,26 @@ class AnuidadeControllerIntegrationTest extends ControllerIntegrationTest {
                   "valor": 220.00
                 }
                 """)
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void isentarAnuidadeSemPermissaoDeveRetornar403() throws Exception {
+        Long config = insertConfiguracaoAnuidade(2026, bd("180.00"));
+        Long titular = insertAssociado("Titular", LocalDate.of(1980, 1, 1), "TITULAR", null, "11910000001");
+        Long anuidade = insertAnuidade(titular, config, bd("180.00"), "PENDENTE");
+
+        enviar(patch("/anuidades/{id}/isencao", anuidade), semPermissao(), null)
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void revogarIsencaoSemPermissaoDeveRetornar403() throws Exception {
+        Long config = insertConfiguracaoAnuidade(2026, bd("180.00"));
+        Long titular = insertAssociado("Titular", LocalDate.of(1980, 1, 1), "TITULAR", null, "11910000001");
+        Long anuidade = insertAnuidade(titular, config, bd("180.00"), "ISENTO");
+
+        enviar(delete("/anuidades/{id}/isencao", anuidade), semPermissao(), null)
                 .andExpect(status().isForbidden());
     }
 
@@ -112,5 +134,34 @@ class AnuidadeControllerIntegrationTest extends ControllerIntegrationTest {
 
         org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("select valor from anuidade where id = ?", java.math.BigDecimal.class, anuidade))
                 .isEqualByComparingTo("220.00");
+    }
+
+    @Test
+    void isentarAnuidadeDeveAlterarStatusParaIsento() throws Exception {
+        Long config = insertConfiguracaoAnuidade(2026, bd("180.00"));
+        Long titular = insertAssociado("Titular", LocalDate.of(1980, 1, 1), "TITULAR", null, "11910000001");
+        Long anuidade = insertAnuidade(titular, config, bd("180.00"), "PENDENTE");
+
+        enviar(patch("/anuidades/{id}/isencao", anuidade), permissao(), null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(anuidade.intValue()))
+                .andExpect(jsonPath("$.status").value("ISENTO"));
+
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("select status from anuidade where id = ?", String.class, anuidade))
+                .isEqualTo("ISENTO");
+    }
+
+    @Test
+    void revogarIsencaoDeveRecalcularStatusComBaseNosPagamentos() throws Exception {
+        Long config = insertConfiguracaoAnuidade(2026, bd("180.00"));
+        Long titular = insertAssociado("Titular", LocalDate.of(1980, 1, 1), "TITULAR", null, "11910000001");
+        Long anuidade = insertAnuidade(titular, config, bd("180.00"), "ISENTO");
+        insertPagamentoAnuidade(anuidade, bd("180.00"));
+
+        enviar(delete("/anuidades/{id}/isencao", anuidade), permissao(), null)
+                .andExpect(status().isNoContent());
+
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("select status from anuidade where id = ?", String.class, anuidade))
+                .isEqualTo("PAGO");
     }
 }

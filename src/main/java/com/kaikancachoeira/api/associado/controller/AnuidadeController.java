@@ -22,6 +22,7 @@ public class AnuidadeController implements AnuidadeApi {
         this.service = service;
     }
 
+    @PostMapping
     @PreAuthorize("hasAuthority('ANUIDADES_MENU')")
     @Override
     public ResponseEntity<Void> criarParaTodos(@RequestBody @Valid AnuidadeRequest request) {
@@ -44,5 +45,20 @@ public class AnuidadeController implements AnuidadeApi {
     public ResponseEntity<AnuidadeResponse> atualizarValor(@PathVariable Long id,
                                                            @RequestBody @Valid AnuidadeValorRequest request) {
         return ResponseEntity.status(HttpStatus.OK).body(service.atualizarValor(id, request));
+    }
+
+    @PatchMapping("/{id}/isencao")
+    @PreAuthorize("hasAuthority('ANUIDADES_MENU')")
+    @Override
+    public ResponseEntity<AnuidadeResponse> isentar(@PathVariable Long id) {
+        return ResponseEntity.status(HttpStatus.OK).body(service.isentar(id));
+    }
+
+    @DeleteMapping("/{id}/isencao")
+    @PreAuthorize("hasAuthority('ANUIDADES_MENU')")
+    @Override
+    public ResponseEntity<Void> revogarIsencao(@PathVariable Long id) {
+        service.revogarIsencao(id);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 }

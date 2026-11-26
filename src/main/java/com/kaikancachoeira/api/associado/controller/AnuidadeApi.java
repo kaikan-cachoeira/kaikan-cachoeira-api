@@ -39,4 +39,20 @@ public interface AnuidadeApi {
     })
     ResponseEntity<AnuidadeResponse> atualizarValor(@Parameter(description = "ID da anuidade", required = true) Long id,
                                                     @RequestBody(description = "Novo valor", required = true) @Valid AnuidadeValorRequest request);
+
+    @Operation(summary = "Isenta anuidade", description = "Marca a anuidade informada como isenta.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Anuidade isenta"),
+            @ApiResponse(responseCode = "404", description = "Anuidade não encontrada"),
+            @ApiResponse(responseCode = "409", description = "Anuidade já isenta")
+    })
+    ResponseEntity<AnuidadeResponse> isentar(@Parameter(description = "ID da anuidade", required = true) Long id);
+
+    @Operation(summary = "Revoga isenção da anuidade", description = "Remove a isenção e recalcula o status da anuidade com base nos pagamentos existentes.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Isenção revogada"),
+            @ApiResponse(responseCode = "404", description = "Anuidade não encontrada"),
+            @ApiResponse(responseCode = "409", description = "Anuidade não está isenta")
+    })
+    ResponseEntity<Void> revogarIsencao(@Parameter(description = "ID da anuidade", required = true) Long id);
 }
