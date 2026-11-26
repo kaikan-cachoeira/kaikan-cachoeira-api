@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 public interface EventoRepository extends JpaRepository<Evento, Long>, JpaSpecificationExecutor<Evento> {
@@ -50,6 +51,8 @@ public interface EventoRepository extends JpaRepository<Evento, Long>, JpaSpecif
     BigDecimal somarCustosAdicionais(@Param("id") Long id);
 
     boolean existsByTipoEventoAndStatusCodigoAndIdNot(TipoEvento tipoEvento, String codigo, Long id);
+
+    List<Evento> findByStatusCodigo(String codigo);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT e FROM Evento e WHERE e.id = :id")
