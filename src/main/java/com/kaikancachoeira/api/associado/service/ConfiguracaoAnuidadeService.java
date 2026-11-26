@@ -1,5 +1,6 @@
 package com.kaikancachoeira.api.associado.service;
 
+import com.kaikancachoeira.api.associado.dto.AnuidadeRequest;
 import com.kaikancachoeira.api.associado.dto.ConfiguracaoAnuidadeRequest;
 import com.kaikancachoeira.api.associado.dto.ConfiguracaoAnuidadeResponse;
 import com.kaikancachoeira.api.associado.entity.ConfiguracaoAnuidade;
@@ -17,10 +18,12 @@ public class ConfiguracaoAnuidadeService {
 
     private final ConfiguracaoAnuidadeRepository repository;
     private final PagamentoRepository pagamentoRepository;
+    private final AnuidadeService anuidadeService;
 
-    public ConfiguracaoAnuidadeService(ConfiguracaoAnuidadeRepository repository, PagamentoRepository pagamentoRepository) {
+    public ConfiguracaoAnuidadeService(ConfiguracaoAnuidadeRepository repository, PagamentoRepository pagamentoRepository, AnuidadeService anuidadeService) {
         this.repository = repository;
         this.pagamentoRepository = pagamentoRepository;
+        this.anuidadeService = anuidadeService;
     }
 
     @Transactional(readOnly = true)
@@ -36,7 +39,8 @@ public class ConfiguracaoAnuidadeService {
         ConfiguracaoAnuidade configuracao = new ConfiguracaoAnuidade();
         configuracao.setAno(request.ano());
         configuracao.setValor(request.valor());
-        repository.save(configuracao);
+        ConfiguracaoAnuidade confAnuidade = repository.save(configuracao);
+        anuidadeService.criarParaTodosTitulares(new AnuidadeRequest(confAnuidade.getId(), confAnuidade.getValor()));
         return ConfiguracaoAnuidadeResponse.de(configuracao);
     }
 
