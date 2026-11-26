@@ -120,7 +120,7 @@ public class AssociadoService {
     }
 
     private AssociadoListaResponse paraResponse(AssociadoListaRow row) {
-        return new AssociadoListaResponse(
+        return AssociadoListaResponse.de(
                 row.id(),
                 row.nome(),
                 row.numeroContato(),
@@ -128,7 +128,12 @@ public class AssociadoService {
                 row.dataNascimento(),
                 row.tipo(),
                 row.titularId(),
-                row.status()
+                row.titularNome(),
+                row.status(),
+                row.anuidadeId(),
+                row.anuidadeValor(),
+                row.anuidadeTotalPago(),
+                row.anuidadeStatus()
         );
     }
 

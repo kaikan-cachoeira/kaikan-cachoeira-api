@@ -3,6 +3,7 @@ package com.kaikancachoeira.api.associado.repository;
 import com.kaikancachoeira.api.associado.entity.Associado;
 import com.kaikancachoeira.api.associado.entity.Anuidade;
 import com.kaikancachoeira.api.associado.entity.ConfiguracaoAnuidade;
+import com.kaikancachoeira.api.associado.entity.Pagamento;
 import com.kaikancachoeira.api.associado.enums.StatusAnuidade;
 import com.kaikancachoeira.api.associado.enums.TipoAssociado;
 import jakarta.persistence.EntityManager;
@@ -19,6 +20,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,11 +48,16 @@ public class AssociadoRepositoryCustomImpl implements AssociadoRepositoryCustom 
         Join<Associado, Associado> titular = associado.join("titular", JoinType.LEFT);
         Join<Associado, Anuidade> anuidade = associado.join("anuidades", JoinType.LEFT);
         Join<Anuidade, ConfiguracaoAnuidade> configuracao = anuidade.join("configuracaoAnuidade", JoinType.LEFT);
+        Join<Anuidade, Pagamento> pagamento = anuidade.join("pagamentos", JoinType.LEFT);
         anuidade.on(cb.equal(configuracao.get("ano"), ano));
 
         Expression<String> statusDaAnuidade = cb.<String>coalesce()
                 .value(anuidade.get("status"))
                 .value(StatusAnuidade.PENDENTE.name());
+
+        Expression<BigDecimal> totalPago = cb.<BigDecimal>coalesce()
+                .value(cb.sum(pagamento.get("valor")))
+                .value(BigDecimal.ZERO);
 
         List<Predicate> predicados = criarPredicados(cb, associado, titular, q, dataInicio, dataFim, tipo, statusDaAnuidade, status);
 
@@ -62,10 +69,26 @@ public class AssociadoRepositoryCustomImpl implements AssociadoRepositoryCustom 
                         associado.get("dataNascimento"),
                         associado.get("tipo"),
                         titular.get("id"),
-                        statusDaAnuidade
+                        titular.get("nome"),
+                        statusDaAnuidade,
+                        anuidade.get("id"),
+                        anuidade.get("valor"),
+                        totalPago,
+                        anuidade.get("status")
                 ))
                 .where(predicados.toArray(Predicate[]::new))
-                .distinct(true)
+                .groupBy(
+                        associado.get("id"),
+                        associado.get("nome"),
+                        associado.get("numeroContato"),
+                        associado.get("dataNascimento"),
+                        associado.get("tipo"),
+                        titular.get("id"),
+                        titular.get("nome"),
+                        anuidade.get("id"),
+                        anuidade.get("valor"),
+                        anuidade.get("status")
+                )
                 .orderBy(cb.asc(associado.get("nome")), cb.asc(associado.get("id")));
 
         List<AssociadoListaRow> itens = entityManager.createQuery(query)

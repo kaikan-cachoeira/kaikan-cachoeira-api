@@ -22,9 +22,52 @@ import java.time.LocalDate;
 @Tag(name = "Associados", description = "Cadastro, consulta e controle de anuidades dos associados.")
 public interface AssociadoApi {
 
-    @Operation(summary = "Lista associados", description = "Retorna os associados com filtros por nome, idade, tipo e status da anuidade do ano informado.")
+    @Operation(
+            summary = "Lista associados",
+            description = "Retorna os associados com filtros por nome, idade, tipo e status da anuidade do ano informado. " +
+                    "Dependentes retornam titularNome; titulares retornam o objeto anuidade com valor, totalPago e status."
+    )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Lista de associados retornada"),
+            @ApiResponse(responseCode = "200", description = "Lista de associados retornada",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = PaginaResponse.class), examples = @ExampleObject(name = "Lista de associados", value = """
+                            {
+                              "itens": [
+                                {
+                                  "id": 12,
+                                  "nome": "Maria Silva",
+                                  "numeroContato": "11999990000",
+                                  "idade": 46,
+                                  "dataNascimento": "1980-02-10",
+                                  "tipo": "TITULAR",
+                                  "titularId": null,
+                                  "titularNome": null,
+                                  "status": "PENDENTE",
+                                  "anuidade": {
+                                    "id": 55,
+                                    "valor": 180.00,
+                                    "totalPago": 0.00,
+                                    "status": "PENDENTE"
+                                  }
+                                },
+                                {
+                                  "id": 13,
+                                  "nome": "Pedro Silva",
+                                  "numeroContato": "11999990001",
+                                  "idade": 15,
+                                  "dataNascimento": "2010-03-05",
+                                  "tipo": "DEPENDENTE",
+                                  "titularId": 12,
+                                  "titularNome": "Maria Silva",
+                                  "status": "PENDENTE",
+                                  "anuidade": null
+                                }
+                              ],
+                              "page": 0,
+                              "size": 20,
+                              "totalItens": 2,
+                              "totalPaginas": 1
+                            }
+                            """))),
             @ApiResponse(responseCode = "400", description = "Parâmetros inválidos",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class), examples = @ExampleObject(name = "Parâmetro inválido", value = """
                             {"codigo":"REQUISICAO_INVALIDA","mensagem":"Valor inválido para o parâmetro","campos":[{"campo":"ano","mensagem":"Campo obrigatório"}]}
