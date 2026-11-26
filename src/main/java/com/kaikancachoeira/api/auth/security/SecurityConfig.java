@@ -31,8 +31,8 @@ public class SecurityConfig {
             "/auth/login",
             "/auth/refresh",
             "/auth/logout",
-            "/auth/recuperacao-novaSenha",
-            "/auth/redefinicao-novaSenha",
+            "/auth/recuperacao-senha",
+            "/auth/redefinicao-senha",
             "/auth/redefinicao-email"
     };
 
