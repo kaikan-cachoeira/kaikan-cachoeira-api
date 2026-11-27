@@ -1,6 +1,7 @@
 package com.kaikancachoeira.api.relatorio.controller;
 
 import com.kaikancachoeira.api.common.exception.ErroResponse;
+import com.kaikancachoeira.api.relatorio.dto.RelatorioGeralResponse;
 import com.kaikancachoeira.api.relatorio.dto.RelatorioResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -11,11 +12,12 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
- 
+
+import java.time.Instant;
 
 @Tag(
         name = "Relatórios",
-        description = "Relatório individual por evento com vendas, custos, doações e lucro."
+        description = "Relatórios individuais e consolidados de eventos."
 )
 public interface RelatorioApi {
 
@@ -57,5 +59,33 @@ public interface RelatorioApi {
     })
     ResponseEntity<RelatorioResponse> gerar(
             @Parameter(description = "ID do evento", required = true) Long id
+    );
+
+    @Operation(
+            summary = "Consulta o relatório geral",
+            description = """
+            Consolida eventos em andamento ou encerrados e reuniões em andamento ou encerradas.
+            A receita total soma vendas e doações em dinheiro; fichas de agradecimento permanecem
+            discriminadas nos custos. Reuniões contribuem apenas com seus custos.
+            """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Relatório geral retornado"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Filtros inválidos",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErroResponse.class)
+                    )
+            )
+    })
+    ResponseEntity<RelatorioGeralResponse> gerarGeral(
+            @Parameter(description = "Instante inicial do período (ISO-8601, inclusivo)")
+            Instant dataInicio,
+            @Parameter(description = "Instante final do período (ISO-8601, inclusivo)")
+            Instant dataFim,
+            @Parameter(description = "Tipos EVENTO e/ou REUNIAO, separados por vírgula; padrão: ambos")
+            String tipos
     );
 }

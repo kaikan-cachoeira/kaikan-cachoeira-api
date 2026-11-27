@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.math.BigDecimal;
@@ -33,6 +34,29 @@ class RelatorioControllerIntegrationTest extends DbIntegrationTest {
     private ResultActions relatorio(Long eventoId, String token) throws Exception {
         return mockMvc.perform(MockMvcRequestBuilders.get("/eventos/{id}/relatorio", eventoId)
                 .header(AUTHORIZATION, token));
+    }
+
+    private ResultActions relatorioGeral(String dataInicio, String dataFim, String tipos) throws Exception {
+        return relatorioGeral(auth("RELATORIOS_MENU"), dataInicio, dataFim, tipos);
+    }
+
+    private ResultActions relatorioGeral(
+            String token,
+            String dataInicio,
+            String dataFim,
+            String tipos) throws Exception {
+        MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get("/relatorios/geral")
+                .header(AUTHORIZATION, token);
+        if (dataInicio != null) {
+            request.param("dataInicio", dataInicio);
+        }
+        if (dataFim != null) {
+            request.param("dataFim", dataFim);
+        }
+        if (tipos != null) {
+            request.param("tipos", tipos);
+        }
+        return mockMvc.perform(request);
     }
 
     private Long insertMov(Long loteId, String tipo, Long eventoId, Long doacaoId, Long itemVendaId,
@@ -520,5 +544,105 @@ class RelatorioControllerIntegrationTest extends DbIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.parcial").value(true))
                 .andExpect(jsonPath("$.resumo.custoTotal").value(33.0));
+    }
+
+    @Test
+    void relatorioGeralDeveExigirPermissaoDeRelatorios() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/relatorios/geral"))
+                .andExpect(status().isUnauthorized());
+
+        relatorioGeral(auth("EVENTOS_MENU"), null, null, null)
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void relatorioGeralDeveConsolidarReceitasCustosELucros() throws Exception {
+        cenarioCompleto("ENCERRADO");
+        Long reuniao = insertEvento("Reunião geral", "REUNIAO", "ENCERRADO");
+        insertCusto(reuniao, "Custos da reunião", null, bd("33.00"));
+        jdbc.update("""
+                update evento
+                set inicio_previsto_em = ?, encerramento_previsto_em = ?
+                where nome = 'Outra festa'
+                """, T0.plusDays(3), T0.plusDays(3).plusHours(8));
+
+        relatorioGeral(
+                T0.minusHours(1).toInstant().toString(),
+                T0.plusHours(1).toInstant().toString(),
+                null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.quantidadeEventos").value(1))
+                .andExpect(jsonPath("$.quantidadeReunioes").value(1))
+                .andExpect(jsonPath("$.quantidadeVendas").value(2))
+                .andExpect(jsonPath("$.receitaVendas").value(29.0))
+                .andExpect(jsonPath("$.doacoesEmDinheiro").value(50.0))
+                .andExpect(jsonPath("$.receitaTotal").value(79.0))
+                .andExpect(jsonPath("$.custoFichasAgradecimento").value(3.5))
+                .andExpect(jsonPath("$.custosTotais").value(136.5))
+                .andExpect(jsonPath("$.lucroTotal").value(-57.5))
+                .andExpect(jsonPath("$.itens", hasSize(2)))
+                .andExpect(jsonPath("$.itens[0].receitaTotal").value(79.0))
+                .andExpect(jsonPath("$.itens[0].custoTotal").value(103.5))
+                .andExpect(jsonPath("$.itens[1].tipoEvento").value("REUNIAO"))
+                .andExpect(jsonPath("$.itens[1].receitaTotal").value(0.0))
+                .andExpect(jsonPath("$.itens[1].custoTotal").value(33.0))
+                .andExpect(jsonPath("$.itens[1].lucro").value(-33.0));
+    }
+
+    @Test
+    void relatorioGeralSemEventosDeveRetornarTotaisZeradosEListaVazia() throws Exception {
+        relatorioGeral("2026-12-01T00:00:00Z", "2026-12-02T00:00:00Z", null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.quantidadeEventos").value(0))
+                .andExpect(jsonPath("$.quantidadeReunioes").value(0))
+                .andExpect(jsonPath("$.quantidadeVendas").value(0))
+                .andExpect(jsonPath("$.receitaTotal").value(0.0))
+                .andExpect(jsonPath("$.custosTotais").value(0.0))
+                .andExpect(jsonPath("$.lucroTotal").value(0.0))
+                .andExpect(jsonPath("$.itens", hasSize(0)));
+    }
+
+    @Test
+    void relatorioGeralComSomenteReunioesDeveSomarApenasCustos() throws Exception {
+        cenarioDeReuniao("ENCERRADO");
+
+        relatorioGeral(null, null, "REUNIAO")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.quantidadeEventos").value(0))
+                .andExpect(jsonPath("$.quantidadeReunioes").value(1))
+                .andExpect(jsonPath("$.quantidadeVendas").value(0))
+                .andExpect(jsonPath("$.receitaVendas").value(0.0))
+                .andExpect(jsonPath("$.doacoesEmDinheiro").value(0.0))
+                .andExpect(jsonPath("$.receitaTotal").value(0.0))
+                .andExpect(jsonPath("$.custosTotais").value(33.0))
+                .andExpect(jsonPath("$.lucroTotal").value(-33.0))
+                .andExpect(jsonPath("$.itens", hasSize(1)));
+    }
+
+    @Test
+    void relatorioGeralDeveAplicarFiltrosDePeriodoETipo() throws Exception {
+        insertEvento("Festa no período", "EVENTO", "ENCERRADO", T0, T0.plusHours(8));
+        insertEvento("Reunião fora do período", "REUNIAO", "ENCERRADO",
+                T0.plusDays(2), T0.plusDays(2).plusHours(8));
+
+        relatorioGeral(
+                T0.minusHours(1).toInstant().toString(),
+                T0.plusHours(1).toInstant().toString(),
+                "EVENTO")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.quantidadeEventos").value(1))
+                .andExpect(jsonPath("$.quantidadeReunioes").value(0))
+                .andExpect(jsonPath("$.itens", hasSize(1)))
+                .andExpect(jsonPath("$.itens[0].nome").value("Festa no período"))
+                .andExpect(jsonPath("$.itens[0].tipoEvento").value("EVENTO"));
+    }
+
+    @Test
+    void relatorioGeralDeveRejeitarTipoDesconhecidoEPeriodoInvertido() throws Exception {
+        relatorioGeral(null, null, "OUTRO")
+                .andExpect(status().isBadRequest());
+
+        relatorioGeral("2026-11-02T00:00:00Z", "2026-11-01T00:00:00Z", null)
+                .andExpect(status().isBadRequest());
     }
 }
