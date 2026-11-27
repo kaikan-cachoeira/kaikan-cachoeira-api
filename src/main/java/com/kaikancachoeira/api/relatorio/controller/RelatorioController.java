@@ -1,16 +1,19 @@
 package com.kaikancachoeira.api.relatorio.controller;
 
+import com.kaikancachoeira.api.relatorio.dto.ProdutosMaisVendidosResponse;
+import com.kaikancachoeira.api.relatorio.dto.RelatorioGeralResponse;
 import com.kaikancachoeira.api.relatorio.dto.RelatorioResponse;
 import com.kaikancachoeira.api.relatorio.service.RelatorioService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+
 @RestController
-@RequestMapping("/eventos/{id}/relatorio")
 @PreAuthorize("hasAuthority('RELATORIOS_MENU')")
 public class RelatorioController implements RelatorioApi {
 
@@ -21,8 +24,28 @@ public class RelatorioController implements RelatorioApi {
     }
 
     @Override
-    @GetMapping
+    @GetMapping("/eventos/{id}/relatorio")
     public ResponseEntity<RelatorioResponse> gerar(@PathVariable Long id) {
         return ResponseEntity.ok(service.gerar(id));
+    }
+
+    @Override
+    @GetMapping("/relatorios/geral")
+    public ResponseEntity<RelatorioGeralResponse> gerarGeral(
+            @RequestParam(required = false) Instant dataInicio,
+            @RequestParam(required = false) Instant dataFim,
+            @RequestParam(required = false) String tipos) {
+        return ResponseEntity.ok(service.gerarGeral(dataInicio, dataFim, tipos));
+    }
+
+    @Override
+    @GetMapping("/relatorios/produtos-mais-vendidos")
+    public ResponseEntity<ProdutosMaisVendidosResponse> produtosMaisVendidos(
+            @RequestParam(required = false) Instant dataInicio,
+            @RequestParam(required = false) Instant dataFim,
+            @RequestParam(required = false) String tipos,
+            @RequestParam(defaultValue = "5") int limite) {
+        return ResponseEntity.ok(
+                service.produtosMaisVendidos(dataInicio, dataFim, tipos, limite));
     }
 }

@@ -8,6 +8,7 @@ import com.kaikancachoeira.api.relatorio.dto.DoacaoDinheiroRelatorio;
 import com.kaikancachoeira.api.relatorio.dto.DoacaoItemRelatorio;
 import com.kaikancachoeira.api.relatorio.dto.MovimentacaoRelatorio;
 import com.kaikancachoeira.api.relatorio.dto.ProdutoRelatorio;
+import com.kaikancachoeira.api.relatorio.dto.ProdutosMaisVendidosResponse;
 import com.kaikancachoeira.api.relatorio.dto.VendaHora;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -135,6 +136,39 @@ public class RelatorioRepository {
             return new ProdutoRelatorio(id, (String) l[1], origem, prevista, vendida, descontos,
                     custo, bruto, bruto, bruto.subtract(custo), preco);
         }).toList();
+    }
+
+    public List<ProdutosMaisVendidosResponse.Item> produtosMaisVendidos(
+            Collection<Long> eventoIds,
+            int limite) {
+        if (eventoIds.isEmpty()) {
+            return List.of();
+        }
+
+        Query consulta = em.createNativeQuery("""
+        select coalesce(p.nome, pe.nome),
+               sum(iv.quantidade),
+               sum(iv.quantidade * (iv.preco_unitario - iv.desconto_unitario))
+        from item_venda iv
+        join venda v on v.id = iv.venda_id and v.cancelada_em is null
+        join produto_evento pe on pe.id = iv.produto_evento_id
+        left join produto p on p.id = pe.produto_id
+        where pe.evento_id in (:eventoIds)
+        group by pe.produto_id is null,
+                 coalesce(pe.produto_id, pe.id),
+                 coalesce(p.nome, pe.nome)
+        order by sum(iv.quantidade) desc, coalesce(p.nome, pe.nome) asc
+        limit :limite
+        """)
+        .setParameter("eventoIds", eventoIds)
+        .setParameter("limite", limite);
+
+        return executar(consulta).stream()
+        .map(l -> new ProdutosMaisVendidosResponse.Item(
+                (String) l[0],
+                ((Number) l[1]).longValue(),
+                dinheiro(l[2])))
+        .toList();
     }
 
     public Map<Long, String> categoriasDoCardapio(Long eventoId) {
