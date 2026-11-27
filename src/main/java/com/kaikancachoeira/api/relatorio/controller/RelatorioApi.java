@@ -1,6 +1,7 @@
 package com.kaikancachoeira.api.relatorio.controller;
 
 import com.kaikancachoeira.api.common.exception.ErroResponse;
+import com.kaikancachoeira.api.relatorio.dto.ProdutosMaisVendidosResponse;
 import com.kaikancachoeira.api.relatorio.dto.RelatorioGeralResponse;
 import com.kaikancachoeira.api.relatorio.dto.RelatorioResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -87,5 +88,36 @@ public interface RelatorioApi {
             Instant dataFim,
             @Parameter(description = "Tipos EVENTO e/ou REUNIAO, separados por vírgula; padrão: ambos")
             String tipos
+    );
+
+    @Operation(
+            summary = "Consulta o ranking geral de produtos mais vendidos",
+            description = """
+            Consolida as vendas não canceladas dos eventos em andamento ou encerrados
+            no período selecionado. Reuniões não são consideradas. Quando o produto
+            estiver vinculado ao estoque, vendas em eventos diferentes são agrupadas
+            pelo produto de estoque; produtos sem vínculo permanecem separados por evento.
+            """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Ranking retornado"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Filtros inválidos",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErroResponse.class)
+                    )
+            )
+    })
+    ResponseEntity<ProdutosMaisVendidosResponse> produtosMaisVendidos(
+            @Parameter(description = "Instante inicial do período (ISO-8601, inclusivo)")
+            Instant dataInicio,
+            @Parameter(description = "Instante final do período (ISO-8601, inclusivo)")
+            Instant dataFim,
+            @Parameter(description = "Tipos EVENTO e/ou REUNIAO, separados por vírgula; apenas EVENTO é considerado")
+            String tipos,
+            @Parameter(description = "Quantidade máxima de produtos retornados; padrão: 5")
+            int limite
     );
 }

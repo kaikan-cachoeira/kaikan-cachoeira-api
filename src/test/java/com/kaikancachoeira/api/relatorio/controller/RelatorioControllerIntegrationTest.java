@@ -59,6 +59,30 @@ class RelatorioControllerIntegrationTest extends DbIntegrationTest {
         return mockMvc.perform(request);
     }
 
+    private ResultActions produtosMaisVendidos(
+            String token,
+            String dataInicio,
+            String dataFim,
+            String tipos,
+            String limite) throws Exception {
+        MockHttpServletRequestBuilder request =
+                MockMvcRequestBuilders.get("/relatorios/produtos-mais-vendidos")
+                        .header(AUTHORIZATION, token);
+        if (dataInicio != null) {
+            request.param("dataInicio", dataInicio);
+        }
+        if (dataFim != null) {
+            request.param("dataFim", dataFim);
+        }
+        if (tipos != null) {
+            request.param("tipos", tipos);
+        }
+        if (limite != null) {
+            request.param("limite", limite);
+        }
+        return mockMvc.perform(request);
+    }
+
     private Long insertMov(Long loteId, String tipo, Long eventoId, Long doacaoId, Long itemVendaId,
                            int quantidade, BigDecimal custoUnitario, BigDecimal custoTotal) {
         return jdbc.queryForObject("""
@@ -643,6 +667,113 @@ class RelatorioControllerIntegrationTest extends DbIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         relatorioGeral("2026-11-02T00:00:00Z", "2026-11-01T00:00:00Z", null)
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void produtosMaisVendidosDeveConsolidarOrdenarLimitarESegregarProdutosSemVinculo()
+            throws Exception {
+        Long evento1 = insertEvento("Festa 1", "EVENTO", "ENCERRADO");
+        Long evento2 = insertEvento("Festa 2", "EVENTO", "ENCERRADO",
+                T0.plusDays(1), T0.plusDays(1).plusHours(8));
+        Long produtoEstoque = insertProduto("Produto compartilhado");
+        Long produtoEvento1 = insertPeEstoque(
+                evento1, produtoEstoque, "Nome no primeiro evento", bd("10.00"), 20);
+        Long produtoEvento2 = insertPeEstoque(
+                evento2, produtoEstoque, "Nome no segundo evento", bd("12.00"), 20);
+        Long boloEvento1 = insertPeProduzido(evento1, "Bolo", bd("8.00"), bd("2.00"));
+        Long boloEvento2 = insertPeProduzido(evento2, "Bolo", bd("9.00"), bd("2.00"));
+
+        Long venda1 = insertVenda(evento1, bd("0"), bd("27.00"));
+        insertItemVenda(venda1, produtoEvento1, 3, bd("10.00"), bd("1.00"));
+        Long venda2 = insertVenda(evento2, bd("0"), bd("24.00"));
+        insertItemVenda(venda2, produtoEvento2, 2, bd("12.00"), bd("0"));
+        Long venda3 = insertVenda(evento1, bd("0"), bd("32.00"));
+        insertItemVenda(venda3, boloEvento1, 4, bd("8.00"), bd("0"));
+        Long venda4 = insertVenda(evento2, bd("0"), bd("9.00"));
+        insertItemVenda(venda4, boloEvento2, 1, bd("9.00"), bd("0"));
+
+        produtosMaisVendidos(auth("RELATORIOS_MENU"), null, null, null, "2")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(2)))
+                .andExpect(jsonPath("$.items[0].name").value("Produto compartilhado"))
+                .andExpect(jsonPath("$.items[0].sold").value(5))
+                .andExpect(jsonPath("$.items[0].revenue").value(51.0))
+                .andExpect(jsonPath("$.items[1].name").value("Bolo"))
+                .andExpect(jsonPath("$.items[1].sold").value(4))
+                .andExpect(jsonPath("$.items[1].revenue").value(32.0));
+
+        produtosMaisVendidos(auth("RELATORIOS_MENU"), null, null, null, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(3)))
+                .andExpect(jsonPath("$.items[2].name").value("Bolo"))
+                .andExpect(jsonPath("$.items[2].sold").value(1));
+    }
+
+    @Test
+    void produtosMaisVendidosDeveFiltrarPeriodoExcluirCanceladasEReunioes()
+            throws Exception {
+        Long eventoDentro = insertEvento(
+                "Festa no período", "EVENTO", "ENCERRADO", T0, T0.plusHours(8));
+        Long eventoFora = insertEvento(
+                "Festa fora", "EVENTO", "ENCERRADO",
+                T0.plusSeconds(1), T0.plusHours(8));
+        Long reuniao = insertEvento(
+                "Reunião", "REUNIAO", "ENCERRADO", T0, T0.plusHours(8));
+        Long produto = insertProduto("Refrigerante");
+        Long peDentro = insertPeEstoque(eventoDentro, produto, "Refrigerante", bd("5.00"), 50);
+        Long peFora = insertPeEstoque(eventoFora, produto, "Refrigerante", bd("5.00"), 50);
+        Long peReuniao = insertPeEstoque(reuniao, produto, "Refrigerante", bd("5.00"), 50);
+
+        Long vendaAtiva = insertVenda(eventoDentro, bd("0"), bd("10.00"));
+        insertItemVenda(vendaAtiva, peDentro, 2, bd("5.00"), bd("0"));
+        Long vendaCancelada = insertVenda(eventoDentro, bd("0"), bd("50.00"));
+        insertItemVenda(vendaCancelada, peDentro, 10, bd("5.00"), bd("0"));
+        jdbc.update("update venda set cancelada_em = ? where id = ?",
+                T0.plusHours(1), vendaCancelada);
+        Long vendaFora = insertVenda(eventoFora, bd("0"), bd("100.00"));
+        insertItemVenda(vendaFora, peFora, 20, bd("5.00"), bd("0"));
+        Long vendaReuniao = insertVenda(reuniao, bd("0"), bd("250.00"));
+        insertItemVenda(vendaReuniao, peReuniao, 50, bd("5.00"), bd("0"));
+
+        produtosMaisVendidos(
+                auth("RELATORIOS_MENU"),
+                T0.toInstant().toString(),
+                T0.toInstant().toString(),
+                "EVENTO,REUNIAO",
+                null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(1)))
+                .andExpect(jsonPath("$.items[0].sold").value(2))
+                .andExpect(jsonPath("$.items[0].revenue").value(10.0));
+
+        produtosMaisVendidos(
+                auth("RELATORIOS_MENU"),
+                null,
+                null,
+                "REUNIAO",
+                null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(0)));
+    }
+
+    @Test
+    void produtosMaisVendidosDeveExigirPermissaoEValidarLimiteEPeriodo() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/relatorios/produtos-mais-vendidos"))
+                .andExpect(status().isUnauthorized());
+
+        produtosMaisVendidos(auth("EVENTOS_MENU"), null, null, null, null)
+                .andExpect(status().isForbidden());
+
+        produtosMaisVendidos(auth("RELATORIOS_MENU"), null, null, null, "0")
+                .andExpect(status().isBadRequest());
+
+        produtosMaisVendidos(
+                auth("RELATORIOS_MENU"),
+                "2026-11-02T00:00:00Z",
+                "2026-11-01T00:00:00Z",
+                null,
+                null)
                 .andExpect(status().isBadRequest());
     }
 }

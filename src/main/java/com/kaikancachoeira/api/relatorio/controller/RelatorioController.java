@@ -1,5 +1,6 @@
 package com.kaikancachoeira.api.relatorio.controller;
 
+import com.kaikancachoeira.api.relatorio.dto.ProdutosMaisVendidosResponse;
 import com.kaikancachoeira.api.relatorio.dto.RelatorioGeralResponse;
 import com.kaikancachoeira.api.relatorio.dto.RelatorioResponse;
 import com.kaikancachoeira.api.relatorio.service.RelatorioService;
@@ -35,5 +36,16 @@ public class RelatorioController implements RelatorioApi {
             @RequestParam(required = false) Instant dataFim,
             @RequestParam(required = false) String tipos) {
         return ResponseEntity.ok(service.gerarGeral(dataInicio, dataFim, tipos));
+    }
+
+    @Override
+    @GetMapping("/relatorios/produtos-mais-vendidos")
+    public ResponseEntity<ProdutosMaisVendidosResponse> produtosMaisVendidos(
+            @RequestParam(required = false) Instant dataInicio,
+            @RequestParam(required = false) Instant dataFim,
+            @RequestParam(required = false) String tipos,
+            @RequestParam(defaultValue = "5") int limite) {
+        return ResponseEntity.ok(
+                service.produtosMaisVendidos(dataInicio, dataFim, tipos, limite));
     }
 }

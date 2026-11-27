@@ -15,6 +15,7 @@ import com.kaikancachoeira.api.relatorio.dto.DoacoesRelatorio;
 import com.kaikancachoeira.api.relatorio.dto.MovimentacaoRelatorio;
 import com.kaikancachoeira.api.relatorio.dto.ProdutoRanking;
 import com.kaikancachoeira.api.relatorio.dto.ProdutoRelatorio;
+import com.kaikancachoeira.api.relatorio.dto.ProdutosMaisVendidosResponse;
 import com.kaikancachoeira.api.relatorio.dto.RankingProdutos;
 import com.kaikancachoeira.api.relatorio.dto.RelatorioEventoResponse;
 import com.kaikancachoeira.api.relatorio.dto.RelatorioGeralResponse;
@@ -110,6 +111,39 @@ public class RelatorioService {
                 somar(itens, RelatorioGeralResponse.Item::custoTotal),
                 somar(itens, RelatorioGeralResponse.Item::lucro),
                 itens);
+    }
+
+    @Transactional(readOnly = true)
+    public ProdutosMaisVendidosResponse produtosMaisVendidos(
+            Instant dataInicio,
+            Instant dataFim,
+            String tipos,
+            int limite) {
+        if (dataInicio != null && dataFim != null && dataInicio.isAfter(dataFim)) {
+            throw ValidacaoException.campo("dataInicio", "deve ser anterior ou igual a dataFim");
+        }
+        if (limite < 1) {
+            throw ValidacaoException.campo("limite", "deve ser maior que zero");
+        }
+        if (!parseTipos(tipos).contains(TipoEvento.EVENTO)) {
+            return new ProdutosMaisVendidosResponse(List.of());
+        }
+
+        Specification<Evento> spec = Specification.<Evento>unrestricted()
+                .and(EventoSpecifications.comStatus(Set.of(EventoGuard.EM_ANDAMENTO, ENCERRADO)))
+                .and(EventoSpecifications.comTipos(Set.of(TipoEvento.EVENTO)));
+        if (dataInicio != null) {
+            spec = spec.and(EventoSpecifications.inicioA_partirDe(dataInicio));
+        }
+        if (dataFim != null) {
+            spec = spec.and(EventoSpecifications.inicioAte(dataFim));
+        }
+
+        List<Long> eventoIds = eventoRepository.findAll(spec).stream()
+                .map(Evento::getId)
+                .toList();
+        return new ProdutosMaisVendidosResponse(
+                repository.produtosMaisVendidos(eventoIds, limite));
     }
 
     private RelatorioResponse gerar(Evento evento) {
